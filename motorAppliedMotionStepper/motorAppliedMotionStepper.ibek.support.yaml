@@ -1,0 +1,236 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+# ### Serial port setup
+# drvAsynSerialPortConfigure("serial1", "/dev/ttyS0", 0, 0, 0)
+# asynSetOption(serial1,0,baud,57600)
+# asynOctetSetInputEos("serial1",0,"\r\n")
+# asynOctetSetOutputEos("serial1",0,"\r\n")
+
+# ### Newport SMC100 support
+# # (driver port, serial port, axis num, ms mov poll, ms idle poll, egu per step)
+# SMC100CreateController("SMC100_1", "serial1",1, 100, 0, "0.00005")
+
+# file "$(TOP)/db/basic_asyn_motor.db"
+# {
+# pattern
+# {P,      N,     M,         DTYP,      PORT,  ADDR,    DESC,        EGU,     DIR,  VELO,  VBAS,  ACCL,  BDST,  BVEL,  BACC,  MRES,  PREC,  DHLM,  DLLM,  INIT, RTRY}
+# {IOC:,  1,  "m$(N)",  "asynMotor",  "SMC100_1",  0,  "GTS30V",      mm,     Pos,  1,     0,    .2,    0,     .5,     .2,    0.00001,  6,     25,   -5,  ""}
+# }
+# iocInit
+
+# # Setup IP port
+# drvAsynIPPortConfigure("$(AsynPort)", "$(ControllerIP):7776")
+# asynOctetSetInputEos("$(AsynPort)",0,"\r")
+# asynOctetSetOutputEos("$(AsynPort)",0,"\r")
+
+# asynSetTraceMask("$(AsynPort)", -1, 0x01)
+# asynSetTraceIOMask("$(AsynPort)", -1, 0x01)
+# dbLoadRecords("$(ASYN)/db/asynRecord.db","P=asyn:,R=$(AsynPort),PORT=$(AsynPort),ADDR=0,IMAX=0,OMAX=0")
+
+# # Create motor controller
+# StepperCreateController("$(ControllerPort)", "$(AsynPort)", 1, 500, 2000)
+
+
+# # Adapted from $(MOTOR)/iocBoot/iocNewFocus874x/newfocus8742.asyn.motor.substitutions
+
+# # See description of all motor fields here: 
+# # https://epics-modules.github.io/motor/motorRecord.html#Fields
+
+# # P - PV name Prefix
+# # M - Motor PV name
+# # DTYP - asynMotor
+# # PORT - motor controller port
+# # ADDR - motor controller address
+# # DESC - description
+# # EGU - engineering units
+# # DIR - direction, Pos or Neg
+# # VELO - velocity, EGU/s
+# # VBAS - base velocity. The intent of VBAS is to prevent the motor from moving 
+# #        at speeds slow enough to excite its resonance, which can cause the motor 
+# #        to miss steps. The motor is expected to accelerate from a stand-still to 
+# #        VBAS in one motor pulse
+# # ACCL - acceleration, in seconds to velocity. The length, in seconds, of the 
+# #        acceleration and deceleration phases of a motor motion.
+# # BDST - backlash distance. The signed distance, in dial coordinates, used for 
+# #        backlash takeout.
+# # BVEL - backlash velocity
+# # BACC - backlash acceleration
+# # MRES - motor resolution. MRES, and (SREV,UREV) represent two ways of specifying 
+# #        the motor resolution--the distance or angle, in engineering units (EGU's), 
+# #        associated with a single motor step. 
+# # PREC - display precision
+# # DHLM - Dial high limit
+# # DLLM - Dial low limit
+# # INIT - Startup commands
+
+
+# # The HTL-133-4 linear actuator travels 1 milli-inch per division around its 
+# # rotation axis, and there are 25 div/revolution, which comes out to 0.635 mm 
+# # per revolution. 
+# #
+# # The motor driver uses revolutions as its unit internally (and converts it to 
+# # steps in messages to the controller), so MRES is set to 0.635 EGU/rev.
+
+# # See https://tausystemsinc.sharepoint.com/sites/Controls_and_Data/_layouts/Doc.aspx?sourcedoc={AE045BA9-82E5-4324-86E5-D2E3CCC63913}&wd=target%28Wiki.one%7C9CE550C8-1926-4C9C-98E2-8124ACD0D0AE%2FTransvacuum%20linear%20actuator%7C78704BCE-3430-4496-869A-75D085C6B338%2F%29&wdpartid={EA854EDB-B5AD-0C57-2DF3-377C09935735}{1}&wdsectionfileid={BFFACBCF-6E75-4EFB-97A0-B572E54F6E6D}
+
+
+# file "$(MOTOR)/db/basic_asyn_motor.db"
+# {
+# pattern {   P,                                    M,        DTYP,              PORT,      ADDR,                 DESC,   EGU,    DIR,   VELO,   VBAS,   ACCL,   BDST,   BVEL,   BACC,     MRES,  PREC,   DLLM,   DHLM,  INIT}
+#   {Decoupling:TransverseProfileMonitor:,   Actuator,   asynMotor,   DCCTPMMotorPort,         0,   "DCC TPM",             mm,    Neg,    1.0,      0,    0.2,      0,      0,    0.2,    0.635,     3,   -100,    100,    ""}
+#   {LaserTransport:BeamBlockMirror:,        Actuator,   asynMotor,   BBCMirrorMotorPort,      0,   "BBC Mirror",          mm,    Neg,    1.0,      0,    0.2,      0,      0,    0.2,    0.635,     3,   -100,    100,    ""}
+#   {Decoupling:HoledMirror:,                Actuator,   asynMotor,   DCCHoledMirrorMotorPort, 0,   "DCC Holed Mirror",    mm,    Neg,    1.0,      0,    0.2,      0,      0,    0.2,    0.635,     3,   -100,    100,    ""}
+# }
+
+
+module: motorAppliedMotionStepper
+
+entity_models:
+  - name: StepperController
+    description: |-
+      Creates a AppliedMotion stepper motor controller and associated motor record
+    parameters:
+      controllerName:
+        type: id
+        description: |-
+          The name of the controller and its Asyn Port Name
+
+      P:
+        type: str
+        description: |-
+          Device PV Prefix
+
+      M: 
+        type: str
+        description: |-
+          PV suffix for the motor record
+
+      ip:
+        type: str
+        description: |-
+          IP address of the controller
+
+      DESC:
+        type: str
+        description: |-
+          The description of the axis
+
+      VELO:
+        type: float
+        description: |-
+          Velocity
+        default: 1.0
+
+      DIR:
+        type: enum
+        description: |-
+          The direction of the axis
+        default: Pos
+        values:
+          Pos:
+          Neg:
+
+      EGU:
+        type: str
+        description: |-
+          Engineering Units
+        default: mm
+
+      VBAS:
+        type: float
+        description: |-
+          Base Velocity (EGU/s)
+        default: 0.0
+
+      ACCL:
+        type: float
+        description: |-
+          Seconds to Velocity
+        default: 0.2
+
+      BDST:
+        type: float
+        description: |-
+          BL Distance (EGU)
+        default: 0.0
+
+      BVEL:
+        type: float
+        description: |-
+          BL Velocity (EGU/s)
+        default: 0.0
+
+      BACC:
+        type: float
+        description: |-
+          BL Seconds to Veloc.
+        default: 0.2
+
+      MRES:
+        type: float
+        description: |-
+          Motor Step Size (EGU)
+        default: 0.635
+
+      PREC:
+        type: int
+        description: |-
+          Display precision (EGU)
+        default: 3
+
+      DLLM:
+        type: int
+        description: |-
+          The low limit of the axis
+        default: -100
+
+      DHLM:
+        type: int
+        description: |-
+          The high limit of the axis
+        default: 100
+
+    pre_init:
+      - value: |
+          drvAsynIPPortConfigure("{{controllerName}}_AsynPort", "$(ControllerIP):7776")
+          asynOctetSetInputEos("{{controllerName}}_AsynPort",0,"\r")
+          asynOctetSetOutputEos("{{controllerName}}_AsynPort",0,"\r")
+
+          asynSetTraceMask("{{controllerName}}_AsynPort", -1, 0x01)
+          asynSetTraceIOMask("{{controllerName}}_AsynPort", -1, 0x01)
+
+          StepperCreateController("{{controllerName}}_CtrlPort", "{{controllerName}}_AsynPort", 1, 500, 2000)
+
+    databases:
+      # Note: supplying no value means that the argument of the same name is used
+      # (the most common case - if you contrive to make args and db fields the same.
+      # Which is  good idea for ease of transition from traditional IOCs)
+      - file: basic_asyn_motor.db
+        args:
+          P: 
+          M:
+          DTYP: asynMotor
+          PORT: "{{controllerName}}_CtrlPort"
+          ADDR: "0"
+          DESC:
+          EGU:
+          DIR:
+          VELO:
+          VBAS:
+          ACCL:
+          BDST:
+          BVEL:
+          BACC:
+          MRES:
+          PREC:
+          DLLM:
+          DHLM:
+          INIT: ""
+      - file: asynRecord.db
+        args:
+          P: "Asyn:"
+          R: "{{controllerName}}_AsynPort"
+          PORT: "{{controllerName}}_AsynPort"
+          ADDR: "0"
+          IMAX: "0"
+          OMAX: "0"
