@@ -192,7 +192,7 @@ entity_models:
 
     pre_init:
       - value: |
-          drvAsynIPPortConfigure("{{controllerName}}_AsynPort", "$(ControllerIP):7776")
+          drvAsynIPPortConfigure("{{controllerName}}_AsynPort", "{{ip}}:7776")
           asynOctetSetInputEos("{{controllerName}}_AsynPort",0,"\r")
           asynOctetSetOutputEos("{{controllerName}}_AsynPort",0,"\r")
 
