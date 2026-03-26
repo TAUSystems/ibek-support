@@ -104,6 +104,192 @@ entity_models:
           asynOctetSetOutputEos({{controllerName}}_ASYN,0,"\r\n")
           asynReport 10
 
+  - name: ConexCreateController
+    description: |-
+      Creates a ConexPP motion controller connected to USB
+    parameters:
+      controllerName:
+        type: id
+        description: |-
+          The name of the controller and its Asyn Port Name
+
+      P:
+        type: str
+        description: |-
+          Device PV Prefix
+
+      M: 
+        type: str
+        description: |-
+          PV suffix
+
+      USB_PATH:
+        type: str
+        description: |-
+          Path to the USB device, such as /dev/ttyUSB0, or preferably a stable 
+          symlink such as /dev/serial/by-id/usb-Teledyne_Conex-PP_12345678-if00-port0
+
+      ASYNPRIO:
+        type: int
+        description: |-
+          ASYN   PRIORITY, Default : 0
+        default: 0
+
+      AUTOCONNECT:
+        type: int
+        description: |-
+          Asyn auto connect
+          0: Auto connection
+          1: no Auto connection
+        default: 0
+
+      NOPRECESSESOS:
+        type: int
+        description: |-
+          ASYN   noProcessEos, Default : 0
+          https://epics.anl.gov/tech-talk/2020/msg01705.php
+        default: 0
+
+      controllerID:
+        type: int
+        description: |-
+          The ID of the controller if for example multple controllers are chained 
+          together. 
+        default: 1
+
+      # basic_asyn_motor parameters
+      DESC:
+        type: str
+        description: |-
+          The description of the axis
+
+      VELO:
+        type: float
+        description: |-
+          Velocity
+        default: 1.0
+
+      DIR:
+        type: enum
+        description: |-
+          The direction of the axis
+        default: Pos
+        values:
+          Pos:
+          Neg:
+
+      EGU:
+        type: str
+        description: |-
+          Engineering Units
+        default: mm
+
+      VBAS:
+        type: float
+        description: |-
+          Base Velocity (EGU/s)
+        default: 0.1
+
+      ACCL:
+        type: float
+        description: |-
+          Seconds to Velocity
+        default: 0.25
+
+      BDST:
+        type: float
+        description: |-
+          BL Distance (EGU)
+        default: 0.0
+
+      BVEL:
+        type: float
+        description: |-
+          BL Velocity (EGU/s)
+        default: 1.0
+
+      BACC:
+        type: float
+        description: |-
+          BL Seconds to Veloc.
+        default: 0.2
+
+      MRES:
+        type: float
+        description: |-
+          Motor Step Size (EGU)
+        default: 4.9609375e-5
+
+      PREC:
+        type: int
+        description: |-
+          Display precision (EGU)
+        default: 4
+
+      DLLM:
+        type: float
+        description: |-
+          The low limit of the axis
+        default: -1
+
+      DHLM:
+        type: float
+        description: |-
+          The high limit of the axis
+        default: 28
+
+    pre_init:
+      - value: |
+          # Configure Asyn serial port
+          drvAsynSerialPortConfigure("{{controllerName}}_ASYN", "{{USB_PATH}}", {{ASYNPRIO}}, {{AUTOCONNECT}}, {{NOPRECESSESOS}})
+          asynOctetSetInputEos("{{controllerName}}_ASYN",0,"\r\n")
+          asynOctetSetOutputEos("{{controllerName}}_ASYN",0,"\r\n")
+          asynSetOption("{{controllerName}}_ASYN",0,"baud","115200")
+          asynSetOption("{{controllerName}}_ASYN",0,"bits","8")
+          asynSetOption("{{controllerName}}_ASYN",0,"stop","1")
+          asynSetOption("{{controllerName}}_ASYN",0,"parity","none")
+          asynSetOption("{{controllerName}}_ASYN",0,"clocal","Y")
+          asynSetOption("{{controllerName}}_ASYN",0,"crtscts","N")
+          asynSetTraceIOMask("{{controllerName}}_ASYN", 0, 2)
+
+          # Create Conex controller
+          AG_CONEXCreateController("Conex_{{controllerName}}", "{{controllerName}}_ASYN", 1, 50, 500)
+          asynSetTraceIOMask("Conex_{{controllerName}}", 0, 2)
+
+    databases:
+      # Note: supplying no value means that the argument of the same name is used
+      # (the most common case - if you contrive to make args and db fields the same.
+      # Which is  good idea for ease of transition from traditional IOCs)
+      - file: basic_asyn_motor.db
+        args:
+          P: 
+          M:
+          DTYP: asynMotor
+          PORT: "{{controllerName}}_CtrlPort"
+          ADDR: "0"
+          DESC:
+          EGU:
+          DIR:
+          VELO:
+          VBAS:
+          ACCL:
+          BDST:
+          BVEL:
+          BACC:
+          MRES:
+          PREC:
+          DLLM:
+          DHLM:
+          INIT: ""
+      - file: asynRecord.db
+        args:
+          P: "Asyn:"
+          R: "{{controllerName}}_AsynPort"
+          PORT: "{{controllerName}}_AsynPort"
+          ADDR: "0"
+          IMAX: "256"
+          OMAX: "256"
+
   - name: motorAxis
     description: |-
       Creates a motor axis
