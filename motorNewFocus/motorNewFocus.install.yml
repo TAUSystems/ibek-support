@@ -10,6 +10,6 @@ dbds:
   - motorSupport.dbd
 
 libs:
-  - newFocus
+  - NewFocus
   - motor
   - asyn
