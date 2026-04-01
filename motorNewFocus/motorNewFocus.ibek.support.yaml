@@ -29,6 +29,11 @@ entity_models:
         description: |-
           The number of axes to create
 
+      P:
+        type: str
+        description: |-
+          Device PV Prefix
+
       movingPollPeriod:
         type: int
         description: |-
