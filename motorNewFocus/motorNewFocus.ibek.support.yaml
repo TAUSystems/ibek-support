@@ -79,10 +79,10 @@ entity_models:
         description: |-
           PV suffix for the motor record
 
-      ADDR:
+      axisNumber:
         type: int
         description: |-
-          The axis number (allowed to be from 0 to controller.numAxes-1)
+          The axis number, allowed to be from 1 to numAxes
 
       DESC:
         type: str
@@ -164,10 +164,6 @@ entity_models:
           The high limit of the axis
         default: 250e3
 
-    post_init:
-      - value: |-
-          dbl
-
     databases:
       # TODO as this is a simulation I have hard coded some of the DB fields,
       # but these could easily be made into arguments above
@@ -178,11 +174,11 @@ entity_models:
       - file: basic_asyn_motor.db
         args:
           P: "{{controller.P}}"
-          N: "{{ADDR +1 }}"
+          N: "{{axisNumber}}"
           M:
           DTYP: asynMotor
           PORT: "{{controller}}_CtrlPort"
-          ADDR:
+          ADDR: "{{axisNumber}}"
           DESC:
           EGU:
           DIR:
