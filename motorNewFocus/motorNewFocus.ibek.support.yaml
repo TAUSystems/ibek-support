@@ -105,7 +105,7 @@ entity_models:
           Neg: 
 
       VELO:
-        type: int
+        type: float
         description: |-
           Velocity
         default: 550
@@ -123,7 +123,7 @@ entity_models:
         default: 0.2
 
       BDST:
-        type: int
+        type: float
         description: |-
           BL Distance (EGU)
         default: 0
