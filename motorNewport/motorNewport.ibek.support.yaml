@@ -265,7 +265,7 @@ entity_models:
           P: 
           M:
           DTYP: asynMotor
-          PORT: "{{controllerName}}_CtrlPort"
+          PORT: "Conex_{{controllerName}}"
           ADDR: "0"
           DESC:
           EGU:
@@ -284,12 +284,14 @@ entity_models:
       - file: asynRecord.db
         args:
           P: "Asyn:"
-          R: "{{controllerName}}_AsynPort"
-          PORT: "{{controllerName}}_AsynPort"
+          R: "{{controllerName}}_ASYN"
+          PORT: "{{controllerName}}_ASYN"
           ADDR: "0"
           IMAX: "256"
           OMAX: "256"
 
+  # SMC100 motor axis
+  # TODO: generalize for both Conex and SMC100
   - name: motorAxis
     description: |-
       Creates a motor axis
