@@ -94,15 +94,6 @@ entity_models:
       - value: |
           ZaberMotionCreateController("{{controllerName}}_ASYN", {{numAxes}}, {{movingPollPeriod}}, {{idlePollPeriod}}, "{{address}}", {{zaberDeviceNumber}})
 
-    post_init:
-      - value: |
-          motorUtilInit("zaberMotion:")
-
-    databases:
-      - file: $(MOTOR)/db/motorUtil.db
-        args:
-          P: "zaberMotion:"
-
   - name: motorAxis
     description: |-
       Creates a motor axis
