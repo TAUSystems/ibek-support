@@ -47,7 +47,7 @@
 module: motorZaber
 
 entity_models:
-  - name: ZaberMotionCreateController
+  - name: createController
     description: |-
       Creates a Zaber motion controller
     parameters:
