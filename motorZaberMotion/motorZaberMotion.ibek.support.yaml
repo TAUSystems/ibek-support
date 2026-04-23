@@ -224,3 +224,15 @@ entity_models:
           DHLM:
           DLLM:
           INIT: ""
+
+  - name: SetDbPath
+    description: |-
+      Set the path to the Zaber device database
+    parameters:
+      path:
+        type: str
+        description: |-
+          Path to the Zaber device database
+    pre_init:
+      - value: |
+          ZaberMotionSetDbPath("{{path}}")
