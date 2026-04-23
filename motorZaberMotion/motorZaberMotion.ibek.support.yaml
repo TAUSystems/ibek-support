@@ -1,0 +1,235 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+
+# ## ## Example st.cmd
+
+# ## motorUtil (allstop & alldone)
+# dbLoadRecords("$(MOTOR)/db/motorUtil.db", "P=zaberMotion:")
+
+# ###
+# # ZaberMotionSetDbPath(
+# #    path of local copy of zaber device database
+# # )
+# ###
+# # ZaberMotionSetDbPath("$(TOP)/aux/devices-public.sqlite")
+
+# ###
+# # ZaberMotionCreateController(
+# #    asyn motor port (will be created),
+# #    num axes,
+# #    moving poll period (ms),
+# #    idle poll period (ms)
+# #    address or serial port name of zaber device (prefixed with tcp:// or serial://)
+# #    zaber device number (1-indexed)
+# # )
+# ###
+# ZaberMotionCreateController("ProbeBeamDelayPort",  1, 100, 5000, "serial:///dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10NQQ1B-if00-port0", 1)
+
+# cd "${TOP}/iocBoot/${IOC}"
+# dbLoadTemplate("probe_beam_delay.substitutions")
+
+# iocInit
+
+# ## motorUtil (allstop & alldone)
+# motorUtilInit("zaberMotion:")
+
+# # Boot complete
+
+# ## ## Example substitutions:
+
+# file "$(MOTOR)/db/asyn_motor.db"
+# {
+#   pattern
+#   {P,                        N,      M,         DTYP,                   PORT,   ADDR,                 DESC,  EGU,   DIR,   VELO,  VMAX,     VBAS,  ACCL,  BDST, BVEL, BACC,   MRES, PREC,    DLLM,     DHLM, INIT}
+#   {Accelerator:ProbeBeam:,   1,  Delay,  "asynMotor",     ProbeBeamDelayPort,      0,   "Probe Beam Delay",   mm,   Pos,   10.0,   24.0,  2.9e-5,    .5,     0,    1,   .2,  0.001,    3,       0,     50.8,   ""}
+# }
+
+module: motorZaber
+
+entity_models:
+  - name: ZaberMotionCreateController
+    description: |-
+      Creates a Zaber motion controller
+    parameters:
+      controllerName:
+        type: id
+        description: |-
+          The name of the controller and its Asyn Port Name
+
+      P:
+        type: str
+        description: |-
+          Device PV Prefix
+
+      numAxes:
+        type: int
+        description: |-
+          The number of axes to create
+        default: 1
+
+      movingPollPeriod:
+        type: int
+        description: |-
+          Movement poll period (ms)
+        default: 100
+
+      idlePollPeriod:
+        type: int
+        description: |-
+          Idle poll period (ms)
+        default: 5000
+
+      address:
+        type: str
+        description: |-
+          Address or serial port name of the Zaber device (prefixed with tcp:// or serial://)
+      
+      zaberDeviceNumber:
+        type: int
+        description: |-
+          Zaber device number (1-indexed)
+        default: 1
+
+    pre_init:
+      - value: |
+          ZaberMotionCreateController("{{controllerName}}_ASYN", {{numAxes}}, {{movingPollPeriod}}, {{idlePollPeriod}}, "{{address}}", {{zaberDeviceNumber}})
+
+    post_init:
+      - value: |
+          motorUtilInit("zaberMotion:")
+
+    databases:
+      - file: $(MOTOR)/db/motorUtil.db
+        args:
+          P: "zaberMotion:"
+
+  - name: motorAxis
+    description: |-
+      Creates a motor axis
+    parameters:
+      controller:
+        type: object
+        description: |-
+          a reference to the motion controller
+
+      M:
+        type: str
+        description: |-
+          PV suffix for the motor record
+
+      ADDR:
+        type: int
+        description: |-
+          The axis number (allowed to be from 0 to controller.numAxes-1)
+
+      DESC:
+        type: str
+        description: |-
+          The description of the axis
+
+      DLLM:
+        type: int
+        description: |-
+          The low limit of the axis
+        default: -5
+
+      DHLM:
+        type: int
+        description: |-
+          The high limit of the axis
+        default: 25
+
+      VELO:
+        type: int
+        description: |-
+          Velocity
+        default: 1
+
+      DIR:
+        type: enum
+        description: |-
+          The direction of the axis
+        default: 0
+        values:
+          Pos: 0
+          Neg: 1
+
+      EGU:
+        type: str
+        description: |-
+          Engineering Units
+        default: mm
+      VBAS:
+        type: float
+        description: |-
+          Base Velocity (EGU/s)
+        default: 0.2
+
+      ACCL:
+        type: float
+        description: |-
+          Seconds to Velocity
+        default: 0.2
+
+      BDST:
+        type: int
+        description: |-
+          BL Distance (EGU)
+        default: 0
+
+      BVEL:
+        type: float
+        description: |-
+          BL Velocity (EGU/s)
+        default: 0.5
+
+      BACC:
+        type: float
+        description: |-
+          BL Seconds to Veloc.
+        default: 0.2
+
+      MRES:
+        type: float
+        description: |-
+          Motor Step Size (EGU)
+        default: 0.00001
+
+      PREC:
+        type: int
+        description: |-
+          Display precision (EGU)
+        default: 6
+
+    post_init:
+      - value: |-
+          dbl
+    databases:
+      # TODO as this is a simulation I have hard coded some of the DB fields,
+      # but these could easily be made into arguments above
+      #
+      # Note: supplying no value means that the argument of the same name is used
+      # (the most common case - if you contrive to make args and db fields the same.
+      # Which is  good idea for ease of transition from traditional IOCs)
+      - file: $(MOTOR)/db/asyn_motor.db
+        args:
+          P: "{{controller.P}}"
+          N: "{{ADDR +1 }}"
+          M:
+          DTYP: asynMotor
+          PORT: "{{controller}}_ASYN"
+          ADDR:
+          DESC:
+          EGU:
+          DIR:
+          VELO:
+          VBAS:
+          ACCL:
+          BDST:
+          BVEL:
+          BACC:
+          MRES:
+          PREC:
+          DHLM:
+          DLLM:
+          INIT: ""
