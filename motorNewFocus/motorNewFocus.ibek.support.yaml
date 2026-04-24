@@ -1,0 +1,203 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+module: motorNewFocus
+
+entity_models:
+  - name: nf874xCreateController
+    # Create NewFocus 8742 controllers
+    # Adapted from $(MOTOR)/iocBoot/iocNewFocus874x/newfocus8742.asyn.st.cmd.linux-x86
+
+    description: |-
+      Create a NewFocus 874x motion controller
+    
+    parameters:
+      controllerName:
+        type: id
+        description: |-
+          The name of the controller, used to identify this controller, and used 
+          in Asyn and Controller port names
+
+      host:
+        type: str
+        description: |-
+          The Internet host name, port number, optional local port number, and 
+          optional IP protocol of the device, in the format 
+            <host>:<port>[:localPort] [protocol=TCP]
+
+      numAxes:
+        type: int
+        description: |-
+          The number of axes to create
+
+      P:
+        type: str
+        description: |-
+          Device PV Prefix
+
+      movingPollPeriod:
+        type: int
+        description: |-
+          The moving poll period in milliseconds
+        default: 200
+      
+      idlePollPeriod:
+        type: int
+        description: |-
+          The idle poll period in milliseconds
+        default: 1000
+
+    pre_init:
+      - value: |
+          # Setup IP port for 8742 
+          drvAsynIPPortConfigure("{{controllerName}}_AsynPort", "{{host}}")
+          asynOctetSetInputEos("{{controllerName}}_AsynPort",0,"\r\n")
+          asynOctetSetOutputEos("{{controllerName}}_AsynPort",0,"\r")
+
+          # db asyn debug traces
+          asynSetTraceMask("{{controllerName}}_AsynPort",-1,0x1)
+          asynSetTraceIOMask("{{controllerName}}_AsynPort",-1,0x1)
+
+          # New Focus Picomotor Network Controller (model 87xx) configuration parameters:  
+          #     (1) IP asyn port name (string)
+          #     (2) Controller asyn port name (string)	
+          #     (3) Number of axes
+          #     (4) Moving poll period (ms)
+          #     (5) Idle poll period (ms)
+          nf874xCreateController("{{controllerName}}_CtrlPort", "{{controllerName}}_AsynPort", {{numAxes}}, {{movingPollPeriod}}, {{idlePollPeriod}})
+
+  - name: motorAxis
+    description: |-
+      Creates a motor axis
+    parameters:
+      controller:
+        type: object
+        description: |-
+          a reference to the motion controller
+
+      M:
+        type: str
+        description: |-
+          PV suffix for the motor record
+
+      axisNumber:
+        type: int
+        description: |-
+          The axis number, allowed to be from 1 to numAxes
+
+      DESC:
+        type: str
+        description: |-
+          The description of the axis
+
+      EGU:
+        type: str
+        description: |-
+          Engineering Units
+        default: step
+
+      DIR:
+        type: enum
+        description: |-
+          The direction of the axis
+        default: Pos
+        values:
+          Pos: 
+          Neg: 
+
+      VELO:
+        type: float
+        description: |-
+          Velocity
+        default: 550
+
+      VBAS:
+        type: float
+        description: |-
+          Base Velocity (EGU/s)
+        default: 0.2
+
+      ACCL:
+        type: float
+        description: |-
+          Seconds to Velocity
+        default: 0.2
+
+      BDST:
+        type: float
+        description: |-
+          BL Distance (EGU)
+        default: 0
+
+      BVEL:
+        type: float
+        description: |-
+          BL Velocity (EGU/s)
+        default: 0
+
+      BACC:
+        type: float
+        description: |-
+          BL Seconds to Veloc.
+        default: 0.2
+
+      MRES:
+        type: float
+        description: |-
+          Motor Step Size (EGU)
+        default: 1
+
+      PREC:
+        type: int
+        description: |-
+          Display precision (EGU)
+        default: 0
+
+      DLLM:
+        type: float
+        description: |-
+          The low limit of the axis
+        default: -250e3
+
+      DHLM:
+        type: float
+        description: |-
+          The high limit of the axis
+        default: 250e3
+
+    databases:
+      # TODO as this is a simulation I have hard coded some of the DB fields,
+      # but these could easily be made into arguments above
+      #
+      # Note: supplying no value means that the argument of the same name is used
+      # (the most common case - if you contrive to make args and db fields the same.
+      # Which is  good idea for ease of transition from traditional IOCs)
+      - file: basic_asyn_motor.db
+        args:
+          P: "{{controller.P}}"
+          N: "{{axisNumber}}"
+          M:
+          DTYP: asynMotor
+          PORT: "{{controller}}_CtrlPort"
+          ADDR: "{{axisNumber}}"
+          DESC:
+          EGU:
+          DIR:
+          VELO:
+          VBAS:
+          ACCL:
+          BDST:
+          BVEL:
+          BACC:
+          MRES:
+          PREC:
+          DLLM:
+          DHLM:
+          INIT: ""
+      - file: asynRecord.db
+        args:
+          P: "Asyn:"
+          R: "{{controller}}_AsynPort"
+          PORT: "{{controller}}_AsynPort"
+          ADDR: "0"
+          IMAX: "80"
+          OMAX: "80"
