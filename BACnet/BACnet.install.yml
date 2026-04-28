@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../_scripts/support_install_variables.json
+
+module: BACnet
+version: b0ebd50
+organization: https://github.com/ornl-epics/

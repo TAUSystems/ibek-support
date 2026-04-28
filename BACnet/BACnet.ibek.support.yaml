@@ -1,0 +1,118 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+module: BACnet
+
+entity_models:
+  - name: defineDevice
+    description: |-
+      Define BACnet field-device. 
+    parameters:
+      P:
+        type: str
+        description: |-
+          Prefix for PV name
+
+      EPICS_device:
+        type: id
+        description: |-
+          Name of the EPICS device to be created
+      
+      BACnet_instance:
+        type: int
+        description: |-
+          The unique BACnet instance number for this device. 
+      
+      network_interface:
+        type: str
+        description: |-
+          The network interface to use for BACnet communication, e.g. "eth0".
+      
+      port:
+        type: int
+        description: |-
+          The port number to use for BACnet communication, e.g. 47808.
+        default: 47808
+
+      apdu_timeout:
+        type: int
+        description: |-
+          A period of time in milliseconds between the driver's request and the 
+          field-device's response. If the period of time between the request and 
+          response reaches this setting the driver will flag the message as timed-out 
+          and issue a retry of the original request.
+        default: 3000
+
+      apdu_retries:
+        type: int
+        description: |-
+          The number of times the driver will retry a request after a timeout before 
+          flagging the device as offline.
+        default: 3
+
+      rpm_buffer_limit:
+        type: int
+        description: |-
+          This is a buffer limit, in bytes, that pertains only to Read-Property-Multiple 
+          message types. This limit will limit the message size of a single BACnet 
+          request/response that has multiple items/propeties inside the single 
+          request/response.
+        default: 500
+
+      rpm_disable:
+        type: bool
+        description: |-
+          This flag will disable the Read-Property-Multiple (RPM) service all 
+          together and use single reads for individual properties, even if the 
+          field-device supports RPM-message types.
+        default: false
+
+    pre_init:
+      - type: text
+        value: |
+          drvBACnetDefineDevice("{{EPICS_device}}", {{BACnet_instance}}, "{{network_interface}}", {{port}})
+          drvBACnetSet("{{EPICS_device}}", "apdu_timeout={{apdu_timeout}}, apdu_retries={{apdu_retries}}, rpm_buffer_limit={{rpm_buffer_limit}}, rpm_disable={{rpm_disable}}")
+
+  - name: analogInput
+    description: |-
+      Define an analog input record for the present value of an object in a BACnet 
+      field-device.
+    parameters:
+      EPICS_device:
+        type: object
+        description: |-
+          Reference to the EPICS device created by defineDevice
+
+      pv_name:
+        type: str
+        description: |-
+          The suffix for the PV name for this record.
+
+      object_instance:
+        type: int
+        description: |-
+          The BACnet object instance number for this point.
+
+      scan_rate:
+        type: enum
+        description: |-
+          Rate at which to scan this record.
+        default: "1 second"
+        values:
+          Passive:
+          .1 second:
+          1 second:
+          10 second:
+          5 second:
+          2 second:
+          .2 second:
+          .5 second:
+          Event:
+
+    databases:
+      - file: bacnet_ai.template
+        args:
+          P: "{{EPICS_device.P}}"
+          OBJ: "{{pv_name}}"
+          DEVICE: "{{EPICS_device}}"
+          OBJ_INST: "{{object_instance}}"
+          SCAN: "{{scan_rate}}"
