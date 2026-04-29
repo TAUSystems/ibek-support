@@ -1,0 +1,98 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+module: std
+
+entity_models:
+  - name: pid
+    description: |-
+      Creates a PID controller
+
+    parameters:
+      P:
+        type: str
+        description: |-
+          Device PV Prefix
+
+      PID:
+        type: str
+        description: |-
+          Name for the PID record, to which prefix will be prepended.
+
+      INP:
+        type: str
+        description: |-
+          Full PV name of the monitored/controlled value, i.e. the PV that the 
+          PID controller attempts to equalize to the setpoint.
+
+      OUT:
+        type: str
+        description: |-
+          Full PV name of where the PID output (the correction) will be written. 
+
+      SCAN:
+        type: str
+        description: |-
+          Feedback calculation rate
+
+      KP:
+        type: float
+        description: |-
+          Proportional gain of the PID controller
+        default: 0.0
+
+      KI:
+        type: float
+        description: |-
+          Integral gain of the PID controller
+        default: 0.0
+
+      KD:
+        type: float
+        description: |-
+          Derivative gain of the PID controller
+        default: 0.0
+
+      DRVL:
+        type: float
+        description: |-
+          Low output limit for output value (the correction)
+        default: 0.0
+
+      DRVH:
+        type: float
+        description: |-
+          High output limit for output value (the correction)
+        default: 0.0
+
+      LOPR:
+        type: float
+        description: |-
+          Lower display limit
+
+      HOPR:
+        type: float
+        description: |-
+          Upper display limit
+
+      PREC:
+        type: int
+        description: |-
+          Display precision
+        default: 0
+
+    databases:
+      - file: pid_control.db
+        args:
+          P: 
+          PID: 
+          INP: 
+          OUT: 
+          SCAN: 
+          KP: 
+          KI: 
+          KD: 
+          DRVL: 
+          DRVH: 
+          LOPR: 
+          HOPR: 
+          PREC: 
