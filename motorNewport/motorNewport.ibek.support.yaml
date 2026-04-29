@@ -104,6 +104,76 @@ entity_models:
           asynOctetSetOutputEos({{controllerName}}_ASYN,0,"\r\n")
           asynReport 10
 
+  - name: SMC100CreateSerialController
+    description: |-
+      Creates a SMC100 motion controller connected to a serial port
+    parameters:
+      controllerName:
+        type: id
+        description: |-
+          The name of the controller and its Asyn Port Name
+
+      P:
+        type: str
+        description: |-
+          Device PV Prefix
+
+      SERIALPORT:
+        type: str
+        description: |-
+          Serial port of the SMC100, e.g., /dev/ttyS0
+
+      POLL:
+        type: int
+        description: |-
+          Movement poll ms
+        default: 100
+
+      EGUXSTEP:
+        type: float
+        description: |-
+          EGU PER STEP
+        default: 0.00005
+
+      ASYNPRIO:
+        type: int
+        description: |-
+          ASYN   PRIORITY, Default : 0
+        default: 0
+
+      AUTOCONNECT:
+        type: int
+        description: |-
+          Asyn auto connect
+          0: Auto connection
+          1: no Auto connection
+        default: 0
+
+      NOPRECESSESOS:
+        type: int
+        description: |-
+          ASYN   noProcessEos, Default : 0
+          https://epics.anl.gov/tech-talk/2020/msg01705.php
+        default: 0
+
+      numAxes:
+        type: int
+        description: |-
+          The number of axes to create
+
+    pre_init:
+      - value: |
+          drvAsynSerialPortConfigure("{{controllerName}}_ASYN", "{{SERIALPORT}}", {{ASYNPRIO}}, {{AUTOCONNECT}}, {{NOPRECESSESOS}})
+          asynSetOption("{{controllerName}}_ASYN",0,"baud",57600)
+          asynSetOption("{{controllerName}}_ASYN",0,"bits",8)
+          asynSetOption("{{controllerName}}_ASYN",0,"stop",1)
+          asynSetOption("{{controllerName}}_ASYN",0,"parity","none")
+          asynSetOption("{{controllerName}}_ASYN",0,"ixon","Y")
+          SMC100CreateController("SMC100_{{controllerName}}", "{{controllerName}}_ASYN","{{numAxes}}", "{{POLL}}", 0, "{{EGUXSTEP}}")
+          asynOctetSetInputEos({{controllerName}}_ASYN,0,"\r\n")
+          asynOctetSetOutputEos({{controllerName}}_ASYN,0,"\r\n")
+          asynReport 10
+
   - name: ConexCreateController
     description: |-
       Creates a ConexPP motion controller connected to USB
