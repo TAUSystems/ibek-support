@@ -109,7 +109,7 @@ entity_models:
           Event:
 
     databases:
-      - file: bacnet_ai.template
+      - file: ${IOC}/db/bacnet_ai.template
         args:
           P: "{{EPICS_device.P}}"
           OBJ: "{{pv_name}}"
