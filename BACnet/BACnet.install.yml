@@ -5,7 +5,7 @@ version: b0ebd50
 organization: https://github.com/ornl-epics/
 
 dbds:
-  - BACnet.dbd
+  - bacnet.dbd
 
 libs:
   - bacnetlib
