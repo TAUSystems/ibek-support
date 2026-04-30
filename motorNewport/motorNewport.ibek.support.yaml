@@ -387,33 +387,33 @@ entity_models:
           The description of the axis
 
       DLLM:
-        type: int
+        type: float
         description: |-
           The low limit of the axis
         default: -5
 
       DHLM:
-        type: int
+        type: float
         description: |-
           The high limit of the axis
         default: 25
 
       VELO:
-        type: int
+        type: float
         description: |-
           Velocity
         default: 1
 
-      home:
-        type: int
-        description: |-
-          The home position of the axis (in counts)
+      # home:
+      #   type: int
+      #   description: |-
+      #     The home position of the axis (in counts)
 
-      start:
-        type: int
-        description: |-
-          The starting position of the axis (in counts)
-        default: 0
+      # start:
+      #   type: int
+      #   description: |-
+      #     The starting position of the axis (in counts)
+      #   default: 0
 
       DIR:
         type: enum
@@ -429,6 +429,7 @@ entity_models:
         description: |-
           Engineering Units
         default: mm
+
       VBAS:
         type: float
         description: |-
@@ -442,7 +443,7 @@ entity_models:
         default: 0.2
 
       BDST:
-        type: int
+        type: float
         description: |-
           BL Distance (EGU)
         default: 0
@@ -474,6 +475,7 @@ entity_models:
     post_init:
       - value: |-
           dbl
+
     databases:
       # TODO as this is a simulation I have hard coded some of the DB fields,
       # but these could easily be made into arguments above
