@@ -486,7 +486,6 @@ entity_models:
       - file: basic_asyn_motor.db
         args:
           P: "{{controller.P}}"
-          N: "{{ADDR +1 }}"
           M:
           DTYP: asynMotor
           PORT: SMC100_{{controller}}
