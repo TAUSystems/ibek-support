@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+# ibek support for the MRC Laser Beam Stabilization system. 
+
+module: mrc-laser-beam-stabilization
+
+entity_models:
+  - name: CompactSystemUSB
+    description: |-
+      Creates an interface to the MRC Laser Beam Stabilization system "Compact" using USB.
+
+    parameters:
+      name:
+        type: id
+        description: |-
+          Identifier for this interface, from which its Asyn Port name will be 
+          taken.
+
+      P:
+        type: str
+        description: |-
+          Device PV Prefix. PVs for the whole system will carry this prefix, and 
+          stage-specific PVs will be additionally prefixed with an R parameter.
+
+      USB_path:
+        type: str
+        description: |-
+          Path to the USB device, such as /dev/ttyUSB0, or preferably a stable 
+          symlink such as /dev/serial/by-id/usb-Teledyne_Conex-PP_12345678-if00-port0
+
+      Asyn_priority:
+        type: int
+        description: |-
+          ASYN   PRIORITY, Default : 0
+        default: 0
+
+      Asyn_noAutoConnect:
+        type: int
+        description: |-
+          Asyn auto connect
+          0: Auto connection
+          1: no Auto connection
+        default: 0
+
+      Asyn_noProcessEos:
+        type: int
+        description: |-
+          ASYN   noProcessEos, Default : 0
+          https://epics.anl.gov/tech-talk/2020/msg01705.php
+        default: 0
+
+    sub_entities:
+      - {
+          type: asyn.AsynSerial,
+          name: "{{name}}_asyn",
+          port: "{{USB_path}}",
+          priority: "{{Asyn_priority}}",
+          noAutoConnect: "{{Asyn_noAutoConnect}}",
+          noProcessEos: 1,
+          baud: 115200,
+          bits: 8,
+          parity: "N",
+          stop: 1,
+          crtscts: "Y",
+        }
+
+    databases:
+      - file: ${IOC}/db/mrc-lbs-compact.db
+        args:
+          P:
+          PORT: "{{name}}_asyn"
+
+  - name: CompactStage
+    description: |-
+      Adds a stage in the MRC Laser Beam Stabilization system "Compact". 
+
+    parameters:
+      system_name:
+        type: object
+        description: |-
+          A reference to the Compact system (USB or Ethernet) to which this stage 
+          belongs. 
+
+      stage_number: 
+        type: enum
+        description: |-
+          The stage number, 1 or 2.
+        values:
+          1:
+          2:
+
+      R:
+        type: str
+        description: |-
+          Stage PV prefix, which will be appended to the system's PV prefix.
+
+    databases:
+      - file: ${IOC}/db/mrc-lbs-compact-stage.db
+        args:
+          P: "{{system_name.P}}"
+          R:
+          S: "{{stage_number}}"
