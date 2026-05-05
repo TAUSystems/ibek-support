@@ -44,7 +44,7 @@
 #   {Accelerator:ProbeBeam:,   1,  Delay,  "asynMotor",     ProbeBeamDelayPort,      0,   "Probe Beam Delay",   mm,   Pos,   10.0,   24.0,  2.9e-5,    .5,     0,    1,   .2,  0.001,    3,       0,     50.8,   ""}
 # }
 
-module: motorZaber
+module: motorZaberMotion
 
 entity_models:
   - name: createController
