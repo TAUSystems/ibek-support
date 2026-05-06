@@ -5,13 +5,17 @@ version: v2.0.0
 organization: https://github.com/zabertech
 
 dbds:
-  - zaberMotionSupport.dbd
-  - motorRecord.dbd
-  - motorSupport.dbd
   - asyn.dbd
   - drvAsynSerialPort.dbd
+  - motorSupport.dbd
+  - zaberMotionSupport.dbd
+  - busyRecord.dbd
+  - busySupport.dbd
 
 libs:
   - ZaberMotion
   - motor
   - asyn
+  - seq
+  - pv
+  - busy
