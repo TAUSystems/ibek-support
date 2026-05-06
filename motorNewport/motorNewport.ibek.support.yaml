@@ -422,8 +422,8 @@ entity_models:
           The direction of the axis
         default: 0
         values:
-          Pos: 0
-          Neg: 1
+          Pos:
+          Neg:
 
       EGU:
         type: str
@@ -502,6 +502,6 @@ entity_models:
           BACC:
           MRES:
           PREC:
-          DHLM:
           DLLM:
+          DHLM:
           INIT: ""
