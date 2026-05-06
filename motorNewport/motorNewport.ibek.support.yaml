@@ -169,6 +169,7 @@ entity_models:
           asynSetOption("{{controllerName}}_ASYN",0,"stop",1)
           asynSetOption("{{controllerName}}_ASYN",0,"parity","none")
           asynSetOption("{{controllerName}}_ASYN",0,"ixon","Y")
+          asynSetOption("{{controllerName}}_ASYN",0,"ixoff","Y")
           SMC100CreateController("SMC100_{{controllerName}}", "{{controllerName}}_ASYN","{{numAxes}}", "{{POLL}}", 0, "{{EGUXSTEP}}")
           asynOctetSetInputEos({{controllerName}}_ASYN,0,"\r\n")
           asynOctetSetOutputEos({{controllerName}}_ASYN,0,"\r\n")
