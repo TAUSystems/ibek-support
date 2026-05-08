@@ -100,3 +100,4 @@ entity_models:
           P: "{{system_name.P}}"
           R:
           S: "{{stage_number}}"
+          PORT: "{{system_name.name}}_asyn"
