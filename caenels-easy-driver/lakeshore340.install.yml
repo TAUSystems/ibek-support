@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../_scripts/support_install_variables.json
+
+module: easy-driver-epics
+version: 10188c2
+organization: https://github.com/CAENels
+
+dbds:
+  - devEasyDriver.dbd
+
+libs:
+  - asyn
+  - devEasyDriver
