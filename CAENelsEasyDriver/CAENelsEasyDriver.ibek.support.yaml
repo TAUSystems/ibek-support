@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+module: CAENelsEasyDriver
+
+entity_models:
+  - name: EasyDriver
+    description: |-
+      CAENels Easy Driver
+    parameters:
+      P:
+        type: str
+        description: |-
+          Prefix for PV name
+      R:
+        type: str
+        description: |-
+          Suffix for PV name
+
+      ADDRESS:
+        type: str
+        description: |-
+          IP and port of the device in the format "ip:port"
+
+      PORT:
+        type: str
+        description: |-
+          Port name for the EasyDriver controller. The Asyn port will be this 
+          plus "_TCP"
+
+      RANGE:
+        type: float
+        description: |-
+          Maximum current in Amp
+        default: 5
+
+      NELM:
+        type: int
+        description: |-
+          Unused?
+        default: 10000
+
+    databases:
+      - file: $(CAENELSEASYDRIVER)/db/devEasyDriver.db
+        args:
+          P:
+          R:
+          PORT:
+          RANGE:
+
+      - file: $(ASYN)/db/asynRecord.db
+        args:
+          P: "Asyn:"
+          R: "{{PORT}}_TCP"
+          PORT: "{{PORT}}_TCP"
+          ADDR: "0"
+          OMAX: "0"
+          IMAX: "0"
+
