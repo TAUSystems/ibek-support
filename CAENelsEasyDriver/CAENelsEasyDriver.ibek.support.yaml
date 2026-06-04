@@ -40,7 +40,7 @@ entity_models:
         default: 10000
 
     databases:
-      - file: $(CAENELSEASYDRIVER)/db/devEasyDriver.db
+      - file: $(EASY_DRIVER_EPICS)/db/devEasyDriver.db
         args:
           P:
           R:
