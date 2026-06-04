@@ -39,6 +39,11 @@ entity_models:
           Unused?
         default: 10000
 
+    pre_init:
+      - value: |
+          devEasyDriverConfigure("{{ PORT }}","{{ ADDRESS }}", 0x1)
+          asynSetTraceIOMask("{{ PORT }}_TCP", -1, 0x2)
+
     databases:
       - file: $(EASY_DRIVER_EPICS)/db/devEasyDriver.db
         args:
@@ -50,8 +55,8 @@ entity_models:
       - file: $(ASYN)/db/asynRecord.db
         args:
           P: "Asyn:"
-          R: "{{PORT}}_TCP"
-          PORT: "{{PORT}}_TCP"
+          R: "{{ PORT }}_TCP"
+          PORT: "{{ PORT }}_TCP"
           ADDR: "0"
           OMAX: "0"
           IMAX: "0"
