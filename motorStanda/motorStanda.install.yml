@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../_scripts/support_install_variables.json
+
+# ibek-support/motorStanda/motorStanda.build.yml
+module: motorStanda
+version: main
+
+organization: https://github.com/dungducphan
+
+dbds:
+  - asyn.dbd
+  - drvAsynSerialPort.dbd
+  - motorRecord.dbd
+  - motorSupport.dbd
+  - StandaSupport.dbd
+
+libs:
+  - Standa
+  - motor
+  - asyn

@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+# ibek-support/motorStanda/motorStanda.ibek.support.yaml
+module: motorStanda
+
+entity_models:
+  - name: StandaAxis
+    description: "A single Standa 8SMC5-usb motor axis"
+
+    # TO-DO: identify the pre-init ritual for Standa
