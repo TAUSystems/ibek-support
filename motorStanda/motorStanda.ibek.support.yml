@@ -1,10 +1,239 @@
 # yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
 
-# ibek-support/motorStanda/motorStanda.ibek.support.yaml
+# dbLoadTemplate("motor.substitutions.8SMC5")
+#
+# ### USB com (serial1)
+# # linux
+# #drvAsynSerialPortConfigure("serial1", "/dev/ttyACM0", 0, 0, 0)
+# # windows
+# #drvAsynSerialPortConfigure("serial1","COM4", 0, 0, 0)
+# #asynSetOption("serial1", -1, "baud", "9600")
+# #asynSetOption("serial1", -1, "bits", "8")
+# #asynSetOption("serial1", -1, "parity", "none")
+# #asynSetOption("serial1", -1, "stop", "1")
+# #asynSetOption("serial1", -1, "clocal", "Y")
+# #asynSetOption("serial1", -1, "crtscts", "N")
+#
+# #asynOctetSetInputEos("serial1",0,"\r")
+# #asynOctetSetOutputEos("serial1",0,"\r")
+#
+# # Turn on asyn traces
+# #asynSetTraceIOMask("serial1",0,0x1)
+# #asynSetTraceMask("serial1",0,0x3)
+# #asynSetTraceFile("serial1",0,"8SMC5.txt")
+#
+# ###
+# # StandaCreateController(
+# #    motor port (will be created),
+# #    asyn port (must already exist),
+# #    num axes,
+# #    moving poll period (ms),
+# #    idle poll period (ms),
+# ###
+# StandaCreateController("standa_1", "serial1", 2, 100, 500)
+#
+# # Turn off asyn traces
+# #asynSetTraceIOMask("serial1",0,0x0)
+# #asynSetTraceMask("serial1",0,0x1)
+
+# file "$(MOTOR)/motorApp/Db/asyn_motor.db"
+# {
+#   pattern
+#   {P,             M,  DTYP,        PORT,     ADDR,  DESC,    EGU,      DIR,  VMAX,  VELO,  VBAS,  ACCL,  BDST,     BVEL,  BACC,     MRES,      PREC,  DHLM,       DLLM,   INIT,   RTRY}
+#   {standa:,         m1, "asynMotor", standa_1,      0,  "x",    mm,      Pos,  15.,     5.,   0.1,   0.1,     0,      1.0,     2,	    2.5e-5,         5,     0,       0,    "",   0}
+#   {standa:,         m2, "asynMotor", standa_1,      1,  "y",    mm,      Pos,  15.,     5.,   0.1,   0.1,     0,      1.0,     2,	    2.5e-5,         5,     0,       0,    "",   0}
+# }
+
 module: motorStanda
 
 entity_models:
-  - name: StandaAxis
-    description: "A single Standa 8SMC5-usb motor axis"
+  - name: StandaCreateController
 
-    # TO-DO: identify the pre-init ritual for Standa
+    description: |-
+      Creates a Standa 8SMC5 motor controller connected to a serial/USB
+    
+    parameters:
+      controllerName:
+        type: id
+        description: |-
+          The name of the controller and also the name of its asyn port
+
+      P:
+        type: str
+        description: |-
+          PV Prefix (e.g., 'standa:')
+
+      M:
+        type: str
+        description: |-
+          Motor record name suffix (e.g., 'm1')
+
+      PORT:
+        type: object
+        description: |-
+          The StandaController PORT identifier defined above (e.g. stand_1)
+
+      tty:
+        type: str
+        description: |-
+          OS path to the serial port (e.g. /dev/ttyUSB0 on Linux, or COM4 on Windows)
+
+      NUMAXES:
+        type: int
+        default: 2
+        description: |-
+          Number of actuator axes
+
+      MOVEPOLLPERIOD:
+        type: int
+        default: 100
+        description: |-
+          Moving status poll period in milliseconds
+
+      IDLEPOLLPERIOD: 
+        type: int
+        default: 500
+        description: |-
+          Idle status poll period in milliseconds
+      
+      ADDR:
+        type: int
+        description: |-
+          Axis index/address on the controller (0-indexed)
+
+      DESC:
+        type: str
+        description: |-
+          Description of the axis (e.g., 'x' or 'y')
+        default: "Motor Axis"
+
+      EGU:
+        type: str
+        description: Engineering units
+        default: "mm"
+
+      DIR:
+        type: enum
+        description: |-
+          The direction of the axis
+        default: 0
+        values:
+          Pos: (0) means user and dial coordinates move in the same direction
+          Neg: (1) invert them
+
+      VMAX:
+        type: float
+        description: Maximum Velocity
+        default: 15.0
+
+      VELO:
+        type: float
+        description: Velocity
+        default: 5.0
+
+      VBAS:
+        type: float
+        description: Base (ramp profile) velocity in EGU/s
+
+      ACCL:
+        type: float
+        description: Acceleration time in seconds
+        default: 0.1
+
+      BDST:
+        type: float
+        description: |-
+          Backlash take-up distance in EGU. If 0, backlash correction is disabled
+
+      BVEL:
+        type: float
+        description: Blacklash velocity in EGU/s
+
+      BACC:
+        type: float
+        description: Blacklash velocity in EGU/s2
+
+      MRES:
+        type: float
+        description: Motor Resolution (units per step)
+        default: 0.000025
+
+      PREC:  
+        type: int
+        default: 5
+        description: |-
+          Display precision, number of digits in decimal point
+      
+      DHLM:   
+        type: float
+        default: 0
+        description: |-
+          Dial High Limit
+
+      DLLM:   
+        type: float
+        default: 0
+        description: |-
+          Dial Low Limit
+
+      INIT:   
+        type: str
+        default: ""
+        description: Init string sent to the controller
+
+      RTRY:
+        type: int
+        default: 0
+        description: |- 
+          Max retry count: number of times the motor record will try to correct for a position deadband error before subsuming success or failure
+
+    pre_init:
+      - value: |
+          # Define ASYN port 
+          drvAsynSerialPortConfigure("{{PORT}}", "{{tty}}", 0, 0, 0)
+          asynSetOption("{{PORT}}", -1, "baud", "9600")
+          asynSetOption("{{PORT}}", -1, "bits", "8")
+          asynSetOption("{{PORT}}", -1, "parity", "none")
+          asynSetOption("{{PORT}}", -1, "stop", "1")
+          asynSetOption("{{PORT}}", -1, "clocal", "Y")
+          asynSetOption("{{PORT}}", -1, "crtscts", "N")
+          # Define end-of-string characters
+          asynOctetSetInputEos("{{PORT}}",0,"\r")
+          asynOctetSetOutputEos("{{PORT}}",0,"\r")
+          # Turn on asyn traces
+          asynSetTraceIOMask("{{PORT}}",0,0x1)
+          asynSetTraceMask("{{PORT}}",0,0x3)
+          asynSetTraceFile("{{PORT}}",0,"{{PORT}}.8SMC5.txt")
+          StandaCreateController({{controllerName}},{{PORT}},{{NUMAXES}},{{MOVEPOLLPERIOD}},{{IDLEPOLLPERIOD}})
+          # Turn off asyn traces
+          #asynSetTraceIOMask("{{PORT}}",0,0x0)
+          #asynSetTraceMask("{{PORT}}",0,0x1)
+
+    post_init:
+      - value: |
+
+    databases:
+      - file: $(MOTOR)/motorApp/Db/asyn_motor.db
+        args:
+          P: "{{P}}"
+          M: "{{M}}"
+          DTYP: "asynMotor"
+          PORT: "{{PORT}}"
+          ADDR: "{{ADDR}}"
+          DESC: "{{DESC}}"
+          EGU: "{{EGU}}"
+          DIR: "{{DIR}}"
+          VMAX: "{{VMAX}}"
+          VELO: "{{VELO}}"
+          VBAS: "{{VBAS}}"
+          ACCL: "{{ACCL}}"
+          BDST: "{{BDST}}"
+          BVEL: "{{BVEL}}"
+          BACC: "{{BACC}}"
+          MRES: "{{MRES}}"
+          PREC: "{{PREC}}"
+          DHLM: "{{DHLM}}"
+          DLLM: "{{DLLM}}"
+          INIT: ""
+          RTRY: "{{RTRY}}"
+          
