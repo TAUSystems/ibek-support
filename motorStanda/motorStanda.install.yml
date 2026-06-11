@@ -6,6 +6,12 @@ version: main
 
 organization: https://github.com/dungducphan
 
+# apt_developer:
+#   - libnuma-dev
+
+# apt_runtime:
+#   - libnuma-dev
+
 dbds:
   - asyn.dbd
   - drvAsynSerialPort.dbd
