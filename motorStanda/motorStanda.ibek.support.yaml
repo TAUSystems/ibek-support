@@ -1,0 +1,239 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+# dbLoadTemplate("motor.substitutions.8SMC5")
+#
+# ### USB com (serial1)
+# # linux
+# #drvAsynSerialPortConfigure("serial1", "/dev/ttyACM0", 0, 0, 0)
+# # windows
+# #drvAsynSerialPortConfigure("serial1","COM4", 0, 0, 0)
+# #asynSetOption("serial1", -1, "baud", "9600")
+# #asynSetOption("serial1", -1, "bits", "8")
+# #asynSetOption("serial1", -1, "parity", "none")
+# #asynSetOption("serial1", -1, "stop", "1")
+# #asynSetOption("serial1", -1, "clocal", "Y")
+# #asynSetOption("serial1", -1, "crtscts", "N")
+#
+# #asynOctetSetInputEos("serial1",0,"\r")
+# #asynOctetSetOutputEos("serial1",0,"\r")
+#
+# # Turn on asyn traces
+# #asynSetTraceIOMask("serial1",0,0x1)
+# #asynSetTraceMask("serial1",0,0x3)
+# #asynSetTraceFile("serial1",0,"8SMC5.txt")
+#
+# ###
+# # StandaCreateController(
+# #    motor port (will be created),
+# #    asyn port (must already exist),
+# #    num axes,
+# #    moving poll period (ms),
+# #    idle poll period (ms),
+# ###
+# StandaCreateController("standa_1", "serial1", 2, 100, 500)
+#
+# # Turn off asyn traces
+# #asynSetTraceIOMask("serial1",0,0x0)
+# #asynSetTraceMask("serial1",0,0x1)
+
+# file "$(MOTOR)/motorApp/Db/asyn_motor.db"
+# {
+#   pattern
+#   {P,             M,  DTYP,        PORT,     ADDR,  DESC,    EGU,      DIR,  VMAX,  VELO,  VBAS,  ACCL,  BDST,     BVEL,  BACC,     MRES,      PREC,  DHLM,       DLLM,   INIT,   RTRY}
+#   {standa:,         m1, "asynMotor", standa_1,      0,  "x",    mm,      Pos,  15.,     5.,   0.1,   0.1,     0,      1.0,     2,	    2.5e-5,         5,     0,       0,    "",   0}
+#   {standa:,         m2, "asynMotor", standa_1,      1,  "y",    mm,      Pos,  15.,     5.,   0.1,   0.1,     0,      1.0,     2,	    2.5e-5,         5,     0,       0,    "",   0}
+# }
+
+module: motorStanda
+
+entity_models:
+  - name: StandaCreateController
+    description: |-
+      Creates a Standa 8SMC5 motion controller connected to an asyn port
+    parameters:
+      controllerName:
+        type: id
+        description: |-
+          The name of the controller and its Asyn Port Name
+          
+      asynPort:
+        type: object
+        description: |-
+          The asyn port name (created previously, e.g. via drvAsynSerialPortConfigure) to connect to the Standa controller
+          
+      numAxes:
+        type: int
+        description: |-
+          The number of axes that this controller supports
+          
+      movingPollPeriod:
+        type: int
+        description: |-
+          The time in ms between polls when any axis is moving
+        default: 100
+        
+      idlePollPeriod:
+        type: int
+        description: |-
+          The time in ms between polls when no axis is moving
+        default: 500
+
+    pre_init:
+      - value: |
+          # StandaCreateController(motor port, asyn port, num axes, moving poll period (ms), idle poll period (ms))
+          StandaCreateController("{{controllerName}}", "{{asynPort}}", {{numAxes}}, {{movingPollPeriod}}, {{idlePollPeriod}})
+
+  - name: standaAxis
+    description: |-
+      Creates a Standa motor axis 
+    parameters:
+      controller:
+        type: object
+        description: |-
+          A reference to the Standa motion controller
+          
+      P:
+        type: str
+        description: |-
+          Device PV Prefix
+          
+      M:
+        type: str
+        description: |-
+          PV suffix for the motor record
+          
+      ADDR:
+        type: int
+        description: |-
+          The axis number (0-based)
+          
+      DESC:
+        type: str
+        description: |-
+          The description of the axis
+        default: ""
+        
+      EGU:
+        type: str
+        description: |-
+          Engineering Units
+        default: mm
+        
+      DIR:
+        type: enum
+        description: |-
+          The direction of the axis
+        default: 0
+        values:
+          Pos: 0
+          Neg: 1
+          
+      VMAX:
+        type: float
+        description: |-
+          Max Velocity (EGU/s)
+        default: 15.0
+        
+      VELO:
+        type: float
+        description: |-
+          Velocity (EGU/s)
+        default: 5.0
+        
+      VBAS:
+        type: float
+        description: |-
+          Base Velocity (EGU/s)
+        default: 0.1
+        
+      ACCL:
+        type: float
+        description: |-
+          Seconds to Velocity
+        default: 0.1
+        
+      BDST:
+        type: float
+        description: |-
+          Backlash Distance (EGU)
+        default: 0
+        
+      BVEL:
+        type: float
+        description: |-
+          Backlash Velocity (EGU/s)
+        default: 1.0
+        
+      BACC:
+        type: float
+        description: |-
+          Backlash Seconds to Velocity
+        default: 2.0
+        
+      MRES:
+        type: float
+        description: |-
+          Motor Step Size (EGU)
+        default: 0.000025
+        
+      PREC:
+        type: int
+        description: |-
+          Display precision
+        default: 5
+        
+      DHLM:
+        type: float
+        description: |-
+          Dial High Limit
+        default: 0
+        
+      DLLM:
+        type: float
+        description: |-
+          Dial Low Limit
+        default: 0
+        
+      INIT:
+        type: str
+        description: |-
+          Startup commands
+        default: ""
+        
+      RTRY:
+        type: int
+        description: |-
+          Max retry count
+        default: 0
+
+    databases:
+      - file: $(MOTOR)/db/asyn_motor.db
+        args:
+          P:
+          M:
+          DTYP: asynMotor
+          PORT: "{{controller}}"
+          ADDR:
+          DESC:
+          EGU:
+          DIR:
+          VMAX:
+          VELO:
+          VBAS:
+          ACCL:
+          BDST:
+          BVEL:
+          BACC:
+          MRES:
+          PREC:
+          DHLM:
+          DLLM:
+          INIT:
+          RTRY:
+
+    pvi:
+      yaml_path: asynMotorAxis.pvi.device.yaml
+      pv_prefix: "{{ P }}{{ M }}"
+      ui_macros:
+        P: "{{ P }}"
+        M: "{{ M }}"
