@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../_scripts/support_install_variables.json
+
+module: motorZaberMotion
+version: v2.0.0
+organization: https://github.com/zabertech
+
+dbds:
+  - asyn.dbd
+  - drvAsynSerialPort.dbd
+  - motorSupport.dbd
+  - zaberMotionSupport.dbd
+  - busyRecord.dbd
+  - busySupport.dbd
+
+libs:
+  - ZaberMotion
+  - motor
+  - asyn
+  - seq
+  - pv
+  - busy
