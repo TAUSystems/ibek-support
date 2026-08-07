@@ -1,0 +1,36 @@
+# from Pylon README:
+# To install the pylon Software Suite in /opt/pylon follow these steps:
+
+#   1. Change to the directory that contains the pylon setup tar.gz archive that
+#      you downloaded from the Basler website.
+
+#   2. Extract the setup tar.gz archive into a directory of your choice (replace
+#      ./pylon_setup if you want to extract into a different directory):
+#       mkdir ./pylon_setup
+#       tar -C ./pylon_setup -xzf ./pylon-*_setup.tar.gz
+
+#   3. Change to the directory into which you extracted the setup tar.gz:
+#       cd ./pylon_setup
+     
+#   4. Extract the pylon SDK into /opt/pylon:
+#       sudo mkdir /opt/pylon
+#       sudo tar -C /opt/pylon -xzf ./pylon-*.tar.gz
+
+#   5. Change access rights of the pylon folder:
+#       sudo chmod 755 /opt/pylon
+
+- name: Build Basler's Pylon library
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      mkdir ./pylon_setup
+      tar -C ./pylon_setup -xzf ./pylon_setup.tar.gz
+      rm ./pylon_setup.tar.gz
+      cd ./pylon_setup
+      mkdir /opt/pylon
+      tar -C /opt/pylon -xzf ./pylon-*.tar.gz
+      rm -fr ./pylon-*.tar.gz
+      chmod 755 /opt/pylon
+
+    executable: /bin/bash
+    chdir: /tmp

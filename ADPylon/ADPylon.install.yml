@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=../_scripts/support_install_variables.json
+
+module: ADPylon
+version: d62a8e3
+
+dbds:
+  - ADPylonSupport.dbd
+libs:
+  - ADPylon
+
+organization: http://github.com/areaDetector
+
+download_extras:
+  - url: https://downloads-bsl.baslerweb.com/software/pylon%2025.11.0/pylon-25.11.0_linux-x86_64_setup.tar.gz
+    dest: /tmp/pylon_setup.tar.gz
+
+tasks:
+  - path: install_pylon_task.yml
+
+apt_developer:
+  - aravis-tools-cli
+
+# incorrecly placed macro does not get overriden by RELEASE.local. Remove it.
+comment_out:
+  - path: configure/RELEASE
+    regexp: "ADGENICAM"
+
+patch_blocks:
+  - path: "{{ config_linux_host }}"
+    block: |
+      CHECK_RELEASE=WARN
+      AREA_DETECTOR=/epics/support
+      CROSS_COMPILER_TARGET_ARCHS =
+
+# copy the pylon library built above to the runtime stage
+runtime_files:
+  - /opt/pylon
