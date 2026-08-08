@@ -10,7 +10,12 @@ entity_models:
       ID:
         type: str
         description: |-
-          Basler ID of camera, e.g. 40522069
+          either the serial number of the camera or the camera index number in the 
+          system. The serial number is normally printed on the camera, and it is 
+          also the last part of the camera name returned by arv-tool, for example 
+          for "Basler-23524298", it would be 23524298. If cameraId is less than 
+          1000 it is assumed to be the system index number, if 1000 or greater it 
+          is assumed to be a serial number.
 
       P:
         type: str
@@ -23,27 +28,27 @@ entity_models:
           PV Suffix
 
       PORT:
-        type: id
+        type: str
         description: |-
           Port name for the camera
-
-      CACHING:
-        type: bool
-        description: |-
-          Enable/disable caching of camera parameters
-        default: true
-
-      BUFFERS:
-        type: int
-        description: |-
-          Maximum number of NDArray buffers to be created for plugin callbacks
-        default: 50
 
       MEMORY:
         type: int
         description: |-
-          Max memory to allocate, should be maxw*maxh*nbuffer for driver and all attached plugins
-        default: -1
+          Maximum amount of memory the NDArrayPool is allowed to allocate. 0 means unlimited.
+        default: 0
+
+      PRIORITY:
+        type: int
+        description: |-
+          Priority of the port thread. 0 means medium priority.
+        default: 0
+
+      STACKSIZE:
+        type: int
+        description: |-
+           0 means medium size.
+        default: 0
 
       TIMEOUT:
         type: int
@@ -60,62 +65,61 @@ entity_models:
 
     pre_init:
       - value: |
-          # TODO
-          aravisConfig("{{PORT}}", "{{ID}}", {{CACHING | int}}, {{MEMORY}}, 0, 1)
+          # ADPylonConfig(const char *portName, const char *cameraName, size_t maxMemory, int priority, int stackSize)
+          ADPylonConfig("{{PORT}}", "{{ID}}", {{MEMORY}}, {{PRIORITY}}, {{STACKSIZE}})
 
     databases:
-      # TODO
-      - file: $(ADARAVIS)/db/aravisCamera.template
+      - file: $(ADPYLON)/db/pylon.template
         args: { P, R, PORT, TIMEOUT, ADDR }
 
     # TODO
     pvi:
-      yaml_path: ADAravis.pvi.device.yaml
+      yaml_path: ADPylon.pvi.device.yaml
       ui_macros:
         P:
         R:
       pv: true
       pv_prefix: $(P)$(R)
 
-  # TODO
-  - name: aravisSettings
+  # # TODO
+  # - name: aravisSettings
 
-    description: |
-      Create detailed settings screens for an Aravis camera from one of
-      the predefined database files in ADGenICam or from the auto generated
-      database file for a specific camera.
+  #   description: |
+  #     Create detailed settings screens for an Aravis camera from one of
+  #     the predefined database files in ADGenICam or from the auto generated
+  #     database file for a specific camera.
 
-      Specify which one using the CLASS parameter or leave CLASS as the
-      default value to auto generate database file. In this case start.sh
-      will contact the camera and generate the database file from its XML
-      description of all its configuration parameters.
+  #     Specify which one using the CLASS parameter or leave CLASS as the
+  #     default value to auto generate database file. In this case start.sh
+  #     will contact the camera and generate the database file from its XML
+  #     description of all its configuration parameters.
 
-    parameters:
-      camera:
-        type: object
-        description: the aravisCamera object to create settings for
+  #   parameters:
+  #     camera:
+  #       type: object
+  #       description: the aravisCamera object to create settings for
 
-    pvi:
-      # Following discussion with Tom Kane et al on Slack on 3/7/26,
-      # pvi device yaml will be named ADAravis-{{ P }}.pvi.device.yaml
-      # whether CLASS=='AutoADGenICam' or not. This keeps things simple
-      # for techui-support.
-      yaml_path: "{{ 'ADAravis-' ~ camera.P }}.pvi.device.yaml"
-      ui_macros:
-        P: "{{ camera.P }}"
-        R: "{{ camera.R }}"
-      pv: true
-      pv_prefix: "{{ camera.P }}{{ camera.R }}"
+  #   pvi:
+  #     # Following discussion with Tom Kane et al on Slack on 3/7/26,
+  #     # pvi device yaml will be named ADAravis-{{ P }}.pvi.device.yaml
+  #     # whether CLASS=='AutoADGenICam' or not. This keeps things simple
+  #     # for techui-support.
+  #     yaml_path: "{{ 'ADAravis-' ~ camera.P }}.pvi.device.yaml"
+  #     ui_macros:
+  #       P: "{{ camera.P }}"
+  #       R: "{{ camera.R }}"
+  #     pv: true
+  #     pv_prefix: "{{ camera.P }}{{ camera.R }}"
 
-    databases:
-      # If CLASS=='AutoADGenICam', the template will be named similarly to
-      # pvi device yaml. If not, the name is CLASS.template, which is intended
-      # to reference predefine template file (this means the template name's format is 
-      # different from that of pvi device yaml).
-      - file: "{{ 'ADAravis-' ~ camera.P if camera.CLASS=='AutoADGenICam' else camera.CLASS }}.template"
-        args:
-          P: "{{ camera.P }}"
-          R: "{{ camera.R }}"
-          PORT: "{{ camera.PORT }}"
-          TIMEOUT: "{{ camera.TIMEOUT }}"
-          ADDR: "{{ camera.ADDR }}"
+  #   databases:
+  #     # If CLASS=='AutoADGenICam', the template will be named similarly to
+  #     # pvi device yaml. If not, the name is CLASS.template, which is intended
+  #     # to reference predefine template file (this means the template name's format is 
+  #     # different from that of pvi device yaml).
+  #     - file: "{{ 'ADAravis-' ~ camera.P if camera.CLASS=='AutoADGenICam' else camera.CLASS }}.template"
+  #       args:
+  #         P: "{{ camera.P }}"
+  #         R: "{{ camera.R }}"
+  #         PORT: "{{ camera.PORT }}"
+  #         TIMEOUT: "{{ camera.TIMEOUT }}"
+  #         ADDR: "{{ camera.ADDR }}"
