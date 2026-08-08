@@ -28,7 +28,7 @@ entity_models:
           PV Suffix
 
       PORT:
-        type: str
+        type: id
         description: |-
           Port name for the camera
 
