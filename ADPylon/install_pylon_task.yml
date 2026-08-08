@@ -29,7 +29,7 @@
       cd ./pylon_setup
       mkdir /opt/pylon
       tar -C /opt/pylon -xzf ./pylon-*.tar.gz
-      rm -fr ./pylon-*.tar.gz
+      rm ./pylon-*.tar.gz
       chmod 755 /opt/pylon
 
     executable: /bin/bash
