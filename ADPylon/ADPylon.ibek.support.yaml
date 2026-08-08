@@ -8,7 +8,7 @@ entity_models:
       Creates a Basler camera areaDetector driver
     parameters:
       ID:
-        type: str
+        type: id
         description: |-
           either the serial number of the camera or the camera index number in the 
           system. The serial number is normally printed on the camera, and it is 
