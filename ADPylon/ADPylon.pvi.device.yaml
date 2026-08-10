@@ -1,97 +1,97 @@
-label: ADAravis Camera
+label: Basler Camera
 children:
   - type: Include
     file_name: ADDriver
 
   - type: Group
-    name: ADAravis
+    name: ADPylon
     layout:
       type: Grid
       labelled: true
     children:
-      - type: SignalR
-        name: ARFramesCompleted
-        read_pv: $(P)$(R)ARFramesCompleted
-        read_widget:
-          type: TextRead
-
-      - type: SignalR
-        name: ARFrameFailures
-        read_pv: $(P)$(R)ARFrameFailures
-        read_widget:
-          type: TextRead
-
-      - type: SignalR
-        name: ARFrameUnderruns
-        read_pv: $(P)$(R)ARFrameUnderruns
-        read_widget:
-          type: TextRead
-
-      - type: SignalR
-        name: ARMissingPackets
-        read_pv: $(P)$(R)ARMissingPackets
-        read_widget:
-          type: TextRead
-
-      - type: SignalR
-        name: ARResentPackets
-        read_pv: $(P)$(R)ARResentPackets
-        read_widget:
-          type: TextRead
-
-      - type: SignalW
-        name: ARPacketResendEnable
-        write_pv: $(P)$(R)ARPacketResendEnable
-        write_widget:
-          type: ComboBox
-
-      - type: SignalW
-        name: ARPacketTimeout
-        write_pv: $(P)$(R)ARPacketTimeout
-        write_widget:
-          type: TextWrite
-
-      - type: SignalW
-        name: ARFrameRetention
-        write_pv: $(P)$(R)ARFrameRetention
-        write_widget:
-          type: TextWrite
-
-      - type: SignalW
-        name: ARResetCamera
-        write_pv: $(P)$(R)ARResetCamera
-        write_widget:
-          type: TextWrite
-
       - type: SignalRW
-        name: ARConvertPixelFormat
-        write_pv: $(P)$(R)ARConvertPixelFormat
+        name: TimeStampMode
+        write_pv: $(P)$(R)TimeStampMode
         write_widget:
           type: ComboBox
-        read_pv: $(P)$(R)ARConvertPixelFormat_RBV
+        read_pv: $(P)$(R)TimeStampMode_RBV
         read_widget:
           type: TextRead
 
       - type: SignalRW
-        name: ARShiftDir
-        write_pv: $(P)$(R)ARShiftDir
+        name: UniqueIdMode
+        write_pv: $(P)$(R)UniqueIdMode
         write_widget:
           type: ComboBox
-        read_pv: $(P)$(R)ARShiftDir_RBV
+        read_pv: $(P)$(R)UniqueIdMode_RBV
         read_widget:
           type: TextRead
 
       - type: SignalRW
-        name: ARShiftBits
-        write_pv: $(P)$(R)ARShiftBits
+        name: ConvertPixelFormat
+        write_pv: $(P)$(R)ConvertPixelFormat
         write_widget:
           type: ComboBox
-        read_pv: $(P)$(R)ARShiftBits_RBV
+        read_pv: $(P)$(R)ConvertPixelFormat_RBV
         read_widget:
           type: TextRead
 
-      - type: SignalW
-        name: ARConnectCamera
-        write_pv: $(P)$(R)ARConnectCamera
+      - type: SignalRW
+        name: ConvertBitAlign
+        write_pv: $(P)$(R)ConvertBitAlign
         write_widget:
-          type: TextWrite
+          type: ComboBox
+        read_pv: $(P)$(R)ConvertBitAlign_RBV
+        read_widget:
+          type: TextRead
+
+      - type: SignalRW
+        name: ConvertShiftBits
+        write_pv: $(P)$(R)ConvertShiftBits
+        write_widget:
+          type: ComboBox
+        read_pv: $(P)$(R)ConvertShiftBits_RBV
+        read_widget:
+          type: TextRead
+
+      - type: SignalR
+        name: GC_StatBufferReceived_RBV
+        read_pv: $(P)$(R)GC_StatBufferReceived_RBV
+        read_widget:
+          type: TextRead
+
+      - type: SignalR
+        name: GC_I_StatBufferFailed_RBV
+        read_pv: $(P)$(R)GC_I_StatBufferFailed_RBV
+        read_widget:
+          type: TextRead
+
+      - type: SignalR
+        name: GC_StatBufferUnderrun_RBV
+        read_pv: $(P)$(R)GC_StatBufferUnderrun_RBV
+        read_widget:
+          type: TextRead
+
+      - type: SignalR
+        name: GC_StatPacketReceived_RBV
+        read_pv: $(P)$(R)GC_StatPacketReceived_RBV
+        read_widget:
+          type: TextRead
+
+      - type: SignalR
+        name: GC_StatPacketFailed_RBV
+        read_pv: $(P)$(R)GC_StatPacketFailed_RBV
+        read_widget:
+          type: TextRead
+
+      - type: SignalR
+        name: GC_StatPacketRequested_RBV
+        read_pv: $(P)$(R)GC_StatPacketRequested_RBV
+        read_widget:
+          type: TextRead
+
+      - type: SignalR
+        name: GC_StatPacketResent_RBV
+        read_pv: $(P)$(R)GC_StatPacketResent_RBV
+        read_widget:
+          type: TextRead
