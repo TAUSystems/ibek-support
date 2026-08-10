@@ -55,43 +55,43 @@ children:
           type: TextRead
 
       - type: SignalR
-        name: GC_StatBufferReceived_RBV
+        name: GCStatBufferReceived
         read_pv: $(P)$(R)GC_StatBufferReceived_RBV
         read_widget:
           type: TextRead
 
       - type: SignalR
-        name: GC_I_StatBufferFailed_RBV
+        name: GCIStatBufferFailed
         read_pv: $(P)$(R)GC_I_StatBufferFailed_RBV
         read_widget:
           type: TextRead
 
       - type: SignalR
-        name: GC_StatBufferUnderrun_RBV
+        name: GCStatBufferUnderrun
         read_pv: $(P)$(R)GC_StatBufferUnderrun_RBV
         read_widget:
           type: TextRead
 
       - type: SignalR
-        name: GC_StatPacketReceived_RBV
+        name: GCStatPacketReceived
         read_pv: $(P)$(R)GC_StatPacketReceived_RBV
         read_widget:
           type: TextRead
 
       - type: SignalR
-        name: GC_StatPacketFailed_RBV
+        name: GCStatPacketFailed
         read_pv: $(P)$(R)GC_StatPacketFailed_RBV
         read_widget:
           type: TextRead
 
       - type: SignalR
-        name: GC_StatPacketRequested_RBV
+        name: GCStatPacketRequested
         read_pv: $(P)$(R)GC_StatPacketRequested_RBV
         read_widget:
           type: TextRead
 
       - type: SignalR
-        name: GC_StatPacketResent_RBV
+        name: GCStatPacketResent
         read_pv: $(P)$(R)GC_StatPacketResent_RBV
         read_widget:
           type: TextRead
