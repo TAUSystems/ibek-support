@@ -35,3 +35,5 @@ patch_blocks:
 # copy the pylon library built above to the runtime stage
 runtime_files:
   - /opt/pylon/lib
+  - /opt/pylon/include
+  - /opt/pylon/bin
