@@ -35,6 +35,5 @@ patch_blocks:
 # copy the pylon library built above to the runtime stage
 # Some 
 runtime_files:
-  # TODO: determine which ones are actually needed to trim the runtime image
-  - /opt/pylon/lib
-  - /opt/pylon/share
+  # TODO: determine which parts are actually needed to trim the runtime image
+  - /opt/pylon
