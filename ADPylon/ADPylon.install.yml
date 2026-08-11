@@ -33,7 +33,8 @@ patch_blocks:
       CROSS_COMPILER_TARGET_ARCHS =
 
 # copy the pylon library built above to the runtime stage
+# Some 
 runtime_files:
+  # TODO: determine which ones are actually needed to trim the runtime image
   - /opt/pylon/lib
-  - /opt/pylon/include
-  - /opt/pylon/bin
+  - /opt/pylon/share
