@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../_scripts/support_install_variables.json
 
 module: motorZaberMotion
-version: 02bee6a35630e6278c72f9b09f6cf57ad2fd5b49
+version: v2.2.0
 organization: https://github.com/zabertech
 
 dbds:
