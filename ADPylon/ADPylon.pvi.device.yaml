@@ -61,8 +61,8 @@ children:
           type: TextRead
 
       - type: SignalR
-        name: GCIStatBufferFailed
-        read_pv: $(P)$(R)GC_I_StatBufferFailed_RBV
+        name: GCStatBufferFailed
+        read_pv: $(P)$(R)GC_StatBufferFailed_RBV
         read_widget:
           type: TextRead
 
