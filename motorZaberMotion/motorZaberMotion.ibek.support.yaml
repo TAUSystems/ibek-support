@@ -67,6 +67,15 @@ entity_models:
           The number of axes to create
         default: 1
 
+      stepSizes:
+        type: str
+        description: |-
+          Per-axis scaling factors for adjusting the base step size, given as 
+          micrometer/step for linear axes and degrees/step for rotary axes. Pass 
+          one space-separated value per axis, in axis order. Omitted or short entries 
+          default to 1.0 (a 1 µm or 1° step size).
+        default: ""
+
       movingPollPeriod:
         type: int
         description: |-
@@ -92,7 +101,7 @@ entity_models:
 
     pre_init:
       - value: |
-          ZaberMotionCreateController("{{controllerName}}_ASYN", {{numAxes}}, {{movingPollPeriod}}, {{idlePollPeriod}}, "{{address}}", {{zaberDeviceNumber}})
+          ZaberMotionCreateController("{{controllerName}}_ASYN", {{numAxes}}, {{movingPollPeriod}}, {{idlePollPeriod}}, "{{address}}", {{zaberDeviceNumber}}, "{{stepSizes}}")
 
   - name: motorAxis
     description: |-
