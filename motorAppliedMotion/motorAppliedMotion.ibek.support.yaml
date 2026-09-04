@@ -199,7 +199,7 @@ entity_models:
 
     pre_init:
       - value: |
-          StepperCreateController("{{controllerName}}_CtrlPort", "{{controllerName}}_Asyn", 1, 500, 2000)
+          StepperCreateController("{{ controllerName }}_Ctrl", "{{ controllerName }}_Asyn", 1, 500, 2000)
 
     databases:
       # Note: supplying no value means that the argument of the same name is used
@@ -210,7 +210,7 @@ entity_models:
           P: 
           M:
           DTYP: asynMotor
-          PORT: "{{controllerName}}_CtrlPort"
+          PORT: "{{ controllerName }}_Ctrl"
           ADDR: "0"
           DESC:
           EGU:
@@ -229,8 +229,8 @@ entity_models:
       - file: asynRecord.db
         args:
           P: "Asyn:"
-          R: "{{controllerName}}_AsynPort"
-          PORT: "{{controllerName}}_AsynPort"
+          R: "{{ controllerName }}_Asyn"
+          PORT: "{{ controllerName }}_Asyn"
           ADDR: "0"
-          IMAX: "0"
-          OMAX: "0"
+          IMAX: "80"
+          OMAX: "80"
