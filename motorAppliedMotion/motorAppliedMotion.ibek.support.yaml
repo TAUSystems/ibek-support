@@ -190,16 +190,16 @@ entity_models:
           The high limit of the axis
         default: 100
 
+    sub_entities:
+      - type: asyn.AsynIP
+        name: "{{ controllerName }}_Asyn"
+        port: "{{ ip }}:7776"
+        input_eos: "\r"
+        output_eos: "\r"
+
     pre_init:
       - value: |
-          drvAsynIPPortConfigure("{{controllerName}}_AsynPort", "{{ip}}:7776")
-          asynOctetSetInputEos("{{controllerName}}_AsynPort",0,"\r")
-          asynOctetSetOutputEos("{{controllerName}}_AsynPort",0,"\r")
-
-          asynSetTraceMask("{{controllerName}}_AsynPort", -1, 0x01)
-          asynSetTraceIOMask("{{controllerName}}_AsynPort", -1, 0x01)
-
-          StepperCreateController("{{controllerName}}_CtrlPort", "{{controllerName}}_AsynPort", 1, 500, 2000)
+          StepperCreateController("{{controllerName}}_CtrlPort", "{{controllerName}}_Asyn", 1, 500, 2000)
 
     databases:
       # Note: supplying no value means that the argument of the same name is used
