@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../_scripts/support_install_variables.json
+
+module: motorAppliedMotion
+version: afe93f4
+organization: https://github.com/TAUSystems
+
+dbds:
+  - asyn.dbd
+  - drvAsynIPPort.dbd
+  - motorSupport.dbd
+  - motorAppliedMotion.dbd
+libs:
+  - motorAppliedMotion
+  - motor
+  - asyn
+  - seq
+  - pv
