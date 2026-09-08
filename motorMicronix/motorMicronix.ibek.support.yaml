@@ -1,0 +1,146 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+module: motorMicronix
+
+entity_models:
+  - name: MMC200Controller
+    description: |-
+      Micronix MMC-100 series controller on a local serial / USB-serial port
+    parameters:
+      controllerName:
+        type: id
+        description: Asyn port name of the motor controller
+      P:
+        type: str
+        description: Device PV prefix
+      DEVICE:
+        type: str
+        description: Serial device node as seen inside the container
+        default: /dev/ttyUSB0
+      BAUD:
+        type: int
+        description: Baud rate (MMC-100 series default)
+        default: 38400
+      numAxes:
+        type: int
+        description: Number of axes on the controller
+        default: 1
+      MOVINGPOLL:
+        type: int
+        description: Moving poll period (ms)
+        default: 100
+      IDLEPOLL:
+        type: int
+        description: Idle poll period (ms)
+        default: 500
+      IGNORELIMITS:
+        type: int
+        description: Ignore limit switches (0 = respect, 1 = ignore)
+        default: 0
+
+    pre_init:
+      - type: text
+        value: |
+          drvAsynSerialPortConfigure("{{controllerName}}_ASYN", "{{DEVICE}}", 0, 0, 0)
+          asynSetOption("{{controllerName}}_ASYN", 0, "baud",    "{{BAUD}}")
+          asynSetOption("{{controllerName}}_ASYN", 0, "bits",    "8")
+          asynSetOption("{{controllerName}}_ASYN", 0, "parity",  "none")
+          asynSetOption("{{controllerName}}_ASYN", 0, "stop",    "1")
+          asynSetOption("{{controllerName}}_ASYN", 0, "clocal",  "Y")
+          asynSetOption("{{controllerName}}_ASYN", 0, "crtscts", "N")
+          asynOctetSetInputEos("{{controllerName}}_ASYN",  0, "\n")
+          asynOctetSetOutputEos("{{controllerName}}_ASYN", 0, "\r")
+          # MMC200CreateController(motorPort, asynPort, numAxes, movingPoll_ms, idlePoll_ms, ignoreLimits)
+          MMC200CreateController("{{controllerName}}", "{{controllerName}}_ASYN", {{numAxes}}, {{MOVINGPOLL}}, {{IDLEPOLL}}, {{IGNORELIMITS}})
+
+  - name: motorAxis
+    description: Creates a motor axis on a Micronix controller
+    parameters:
+      controller:
+        type: object
+        description: Reference to the MMC200Controller entity
+      M:
+        type: str
+        description: PV suffix for the motor record
+      ADDR:
+        type: int
+        description: Axis number (0 .. numAxes-1)
+      DESC:
+        type: str
+        description: Axis description
+      EGU:
+        type: str
+        description: Engineering units for the axis
+        default: mm
+      DIR:
+        type: enum
+        description: Direction of the motor (0 = positive, 1 = negative)
+        default: 0
+        values:
+          Pos: 0
+          Neg: 1
+      MRES:
+        type: float
+        description: Motor step size (EGU)
+        default: 0.00005
+      VELO:
+        type: float
+        description: Maximum velocity (EGU/s)
+        default: 1
+      VBAS:
+        type: float
+        description: Base velocity (EGU/s)
+        default: 0.1
+      ACCL:
+        type: float
+        description: Acceleration (EGU/s^2)
+        default: 0.2
+      BDST:
+        type: float
+        description: Backlash distance (EGU)
+        default: 0
+      BVEL:
+        type: float
+        description: Backlash velocity (EGU/s)
+        default: 0.5
+      BACC:
+        type: float
+        description: Backlash acceleration (EGU/s^2)
+        default: 0.2
+      DHLM:
+        type: float
+        description: High limit (EGU) for the axis
+        default: 25
+      DLLM:
+        type: float
+        description: Low limit (EGU) for the axis 0
+        default: -25
+      PREC:
+        type: int
+        description: Precision (number of decimal places for the axis)
+        default: 5
+
+    databases:
+      - file: basic_asyn_motor.db
+        args:
+          P: "{{controller.P}}"
+          N: "{{ADDR + 1}}"
+          M:
+          DTYP: asynMotor
+          PORT: "{{controller}}"
+          ADDR:
+          DESC:
+          EGU:
+          DIR:
+          VELO:
+          VBAS:
+          ACCL:
+          BDST:
+          BVEL:
+          BACC:
+          MRES:
+          PREC:
+          DHLM:
+          DLLM:
+          INIT: ""
+
