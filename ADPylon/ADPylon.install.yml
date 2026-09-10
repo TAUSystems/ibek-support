@@ -32,9 +32,15 @@ patch_blocks:
       AREA_DETECTOR=/epics/support
       CROSS_COMPILER_TARGET_ARCHS =
 
-# copy the pylon library built above to the runtime stage
-# These files were found to be minimal for the acA1440-73gm GigE camera.
-# TODO: determine if additional files from /opt/pylon are needed for USB cameras
+# Copy the pylon library built above to the runtime stage
+# Unnecessary files in /opt/pylon are deleted later in the build, keeping only 
+#   /opt/pylon/lib
+#   /opt/pylon/bin/pylongigeconnectionguard
+#
+# They must be copied and later deleted (rather than including only those files 
+# in runtime_files below) because of the way ibek copies runtime_files. For 
+# runtime_files ending in 'lib' (or bin, or db) ibek applies `strip` to the files.
+# At least one of the .so files in /opt/pylon/lib is corrupted by the strip action, 
+# so /opt/pylon/lib must be copied via its parent directory. 
 runtime_files:
-  - /opt/pylon/lib
-  - /opt/pylon/bin/pylongigeconnectionguard
+  - /opt/pylon
