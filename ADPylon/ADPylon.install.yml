@@ -33,7 +33,8 @@ patch_blocks:
       CROSS_COMPILER_TARGET_ARCHS =
 
 # copy the pylon library built above to the runtime stage
-# Some 
+# These files were found to be minimal for the acA1440-73gm GigE camera.
+# TODO: determine if additional files from /opt/pylon are needed for USB cameras
 runtime_files:
-  # TODO: determine which parts are actually needed to trim the runtime image
-  - /opt/pylon
+  - /opt/pylon/lib
+  - /opt/pylon/bin/pylongigeconnectionguard
