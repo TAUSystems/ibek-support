@@ -83,7 +83,7 @@
 # }
 
 
-module: motorAppliedMotionStepper
+module: motorAppliedMotion
 
 entity_models:
   - name: StepperController
