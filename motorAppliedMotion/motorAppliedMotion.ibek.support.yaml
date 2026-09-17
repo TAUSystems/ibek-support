@@ -194,8 +194,8 @@ entity_models:
       - type: asyn.AsynIP
         name: "{{ controllerName }}_Asyn"
         port: "{{ ip }}:7776"
-        input_eos: "\r"
-        output_eos: "\r"
+        input_eos: "\\r"
+        output_eos: "\\r"
 
     pre_init:
       - value: |
