@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../_scripts/support_install_variables.json
 
 module: motorAppliedMotion
-version: "1699589"
+version: d7d6102
 organization: https://github.com/TAUSystems
 
 dbds:
