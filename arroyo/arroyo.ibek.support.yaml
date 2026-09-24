@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
+
+module: arroyo
+
+entity_models:
+  - name: ArroyoLaserSourceUSB
+    description: |-
+      Arroyo laser diode driver via USB interface
+
+    parameters:
+      P:
+        type: str
+        description: |-
+          Prefix for PV name
+
+      R:
+        type: str
+        description: |-
+          Suffix for PV name
+
+      PORT:
+        type: str
+        description: |-
+          A name to use for the Asyn port
+
+    sub_entities:
+      - type: asyn.AsynSerial
+        port: "{{ PORT }}"
+        name: "{{ PORT }}"
+        input_eos: \r\n
+        output_eos: \r\n
+        baud: 38400
+        parity: N
+        stop: 1
+        bits: 8
+
+    databases:
+      - file: $(ARROYO)/db/arroyo-all.db
+        args:
+          P:
+          R:
+          PORT:
+      
+      - file: $(ARROYO)/db/laser.db
+        args:
+          P:
+          R:
+          PORT:
+      
+      - file: $(ASYN)/db/asynRecord.db
+        args:
+          P: "Asyn:"
+          R: "{{ PORT }}_TCP"
+          PORT: "{{ PORT }}_TCP"
+          ADDR: "0"
+          OMAX: "128"
+          IMAX: "128"
