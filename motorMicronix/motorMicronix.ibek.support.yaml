@@ -48,7 +48,7 @@ entity_models:
           asynSetOption("{{controllerName}}_ASYN", 0, "stop",    "1")
           asynSetOption("{{controllerName}}_ASYN", 0, "clocal",  "Y")
           asynSetOption("{{controllerName}}_ASYN", 0, "crtscts", "N")
-          asynOctetSetInputEos("{{controllerName}}_ASYN",  0, "\n")
+          asynOctetSetInputEos("{{controllerName}}_ASYN",  0, "\n\r")
           asynOctetSetOutputEos("{{controllerName}}_ASYN", 0, "\r")
           # MMC200CreateController(motorPort, asynPort, numAxes, movingPoll_ms, idlePoll_ms, ignoreLimits)
           MMC200CreateController("{{controllerName}}", "{{controllerName}}_ASYN", {{numAxes}}, {{MOVINGPOLL}}, {{IDLEPOLL}}, {{IGNORELIMITS}})
