@@ -9,7 +9,7 @@ entity_models:
 
     parameters:
       PORT:
-        type: id
+        type: str
         description: |-
           Name to use for the Asyn port
 
