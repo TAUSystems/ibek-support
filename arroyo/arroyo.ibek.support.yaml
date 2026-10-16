@@ -8,6 +8,16 @@ entity_models:
       Arroyo laser diode driver via USB interface
 
     parameters:
+      PORT:
+        type: id
+        description: |-
+          Name to use for the Asyn port
+
+      path:
+        type: str
+        description: |-
+          USB serial port path, e.g. /dev/serial/by-id/usb-FTDI_USB-Serial_Converter_12345-if00-port0
+
       P:
         type: str
         description: |-
@@ -18,14 +28,11 @@ entity_models:
         description: |-
           Suffix for PV name
 
-      PORT:
-        type: str
-        description: |-
-          A name to use for the Asyn port
-
     sub_entities:
       - type: asyn.AsynSerial
-        port: "{{ PORT }}"
+        # asyn.AsynSerial.port is the USB or IP address
+        port: "{{ path }}"
+        # asyn.AsynSerial.name is the name to use for the Asyn port
         name: "{{ PORT }}"
         input_eos: \r\n
         output_eos: \r\n
@@ -50,8 +57,8 @@ entity_models:
       - file: $(ASYN)/db/asynRecord.db
         args:
           P: "Asyn:"
-          R: "{{ PORT }}_TCP"
-          PORT: "{{ PORT }}_TCP"
+          R: "{{ PORT }}"
+          PORT:
           ADDR: "0"
           OMAX: "128"
           IMAX: "128"
