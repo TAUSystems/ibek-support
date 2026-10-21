@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../_scripts/support_install_variables.json
 
 module: arroyo
-version: 243fbeb
+version: f31e20c
 organization: https://github.com/TAUSystems
 
 protocol_files:
