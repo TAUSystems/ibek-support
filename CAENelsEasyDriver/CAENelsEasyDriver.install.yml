@@ -2,7 +2,7 @@
 
 module: easy-driver-epics
 version: 9bf8716
-organization: https://github.com/CAENels
+organization: https://github.com/TAUSystems
 
 dbds:
   - devEasyDriver.dbd
