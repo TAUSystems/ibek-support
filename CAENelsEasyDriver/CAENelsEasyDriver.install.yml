@@ -10,3 +10,26 @@ dbds:
 libs:
   - asyn
   - devEasyDriver
+
+apt_developer:
+  - openjdk-21-jre
+
+bash:
+  # Convert EDM .edl files to BOB format using Phoebus
+  - post_build: true
+    cmd: |
+      set -euo pipefail
+      phoebus_dir=$(mktemp -d)
+      trap 'rm -rf "${phoebus_dir}"' EXIT
+      wget -O "${phoebus_dir}/phoebus.tar.gz" https://github.com/ControlSystemStudio/phoebus/releases/download/v6.0.0/phoebus-linux-6.0.0.tar.gz
+      tar -xzf "${phoebus_dir}/phoebus.tar.gz" -C "${phoebus_dir}" --strip-components=1
+      cd opi
+      mkdir -p autoconvert/bob
+      wget -O colors.list https://raw.githubusercontent.com/slac-epics/edm/c8ccd6b2a251541e820341f33566777649c20f58/setup/colors.list
+      java -jar "${phoebus_dir}/product-6.0.0.jar" -main org.csstudio.display.converter.edm.Converter \
+        -colors colors.list \
+        -output "${PWD}/autoconvert/bob" \
+        "${PWD}"/*.edl
+
+runtime_files:
+  - /epics/support/easy-driver-epics/opi
