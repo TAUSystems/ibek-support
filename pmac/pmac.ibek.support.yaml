@@ -784,11 +784,13 @@ entity_models:
         type: float
         description: |-
           Dial High Limit
+        default: 0
 
       DLLM:
         type: float
         description: |-
           Dial Low Limit
+        default: 0
 
       HLM:
         type: float
@@ -1034,7 +1036,7 @@ entity_models:
 
     pvi:
       yaml_path: pmacAxis.pvi.device.yaml
-      pv_prefix: "{{ P }}{{ M }}"
+      pv_prefix: $(P)$(M)
       ui_macros:
         P:
         M:

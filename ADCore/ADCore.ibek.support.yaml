@@ -1,12 +1,43 @@
 # yaml-language-server: $schema=https://github.com/epics-containers/ibek/releases/download/3.0.1/ibek.support.schema.json
 
-module: ADCore
+shared:
+  - &NDAttributes-parameters
+      ATTRIBUTES_FILE:
+        type: str
+        description: |-
+          NDAttributes XML that lists the attributes to attach to each NDArray.
+          Preferred: the XML itself, inline. Any value containing <Attributes>
+          is inline XML, and each run of whitespace in it collapses to one
+          space, so a YAML | block can be used. The <Attributes> tag must be
+          written exactly so, without attributes of its own.
+          Alternative: a file name such as attrs.xml, for a file in the IOC
+          instance's config folder (it resolves to /epics/ioc/config/attrs.xml),
+          or a path starting with /.
+          XMLSIZE grows to fit the inline XML or the resolved path.
+          Empty (or only whitespace) sets nothing at startup.
+          Setting this overrides the autosaved NDAttributesFile at each IOC start.
+        default: ""
 
-entity_models:
-  - name: NDFileNexus
-    description: |-
-      This plugin can compress NDArrays to Nexus and write them to file
-    parameters:
+      ATTRIBUTES_MACROS:
+        type: str
+        description: |-
+          Macro substitutions applied to the NDAttributes XML when ADCore reads
+          it, e.g. "P=BL01T-EA-DET-01:,R=CAM:" for source="$(P)$(R)Temp".
+          Runs of whitespace collapse to one space. The result must fit in 255
+          bytes of UTF-8, or the render fails. Empty sets nothing at startup.
+          Setting this overrides the autosaved NDAttributesMacros at each IOC start.
+        default: ""
+
+  - &NDAttributes-config
+    type: ADCore.NDAttributesConfig
+    P: "{{ P }}"
+    R: "{{ R }}"
+    ATTRIBUTES_FILE: "{{ ATTRIBUTES_FILE }}"
+    ATTRIBUTES_MACROS: "{{ ATTRIBUTES_MACROS }}"
+
+  - &NDArrayBase-model-parameters
+      <<: *NDAttributes-parameters
+
       P:
         type: str
         description: |-
@@ -20,24 +51,24 @@ entity_models:
       PORT:
         type: id
         description: |-
-          Port name for the NDFileNexus plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
+          Port name for this plugin
 
       ADDR:
         type: int
         description: |-
-          Asyn Port address
+          Asyn port address
         default: 0
+
+      TIMEOUT:
+        type: int
+        description: |-
+          Asyn timeout
+        default: 1
+
+      NDARRAY_PORT:
+        type: object
+        description: |-
+          Input array port name
 
       NDARRAY_ADDR:
         type: int
@@ -67,6 +98,7 @@ entity_models:
           .5 second:
           Event:
           I/O Intr:
+
       QUEUE:
         type: int
         description: |-
@@ -79,23 +111,59 @@ entity_models:
           Blocking callbacks?
         default: 0
 
+      XMLSIZE:
+        type: int
+        description: |-
+          Number of bytes in the NDAttributesFile waveform record. Grown
+          automatically to fit ATTRIBUTES_FILE (the inline XML or the resolved
+          path, in UTF-8, plus a NUL); a larger value given here wins.
+        default: 256
+
+  - &NDArrayBase-threads
+      MAX_THREADS:
+        type: int
+        description: |-
+          Maximum number threads
+        default: 1
+
+  - &NDArrayBase-template-args
+      P:
+      R:
+      PORT:
+      NDARRAY_PORT:
+      TIMEOUT:
+      ADDR:
+      NDARRAY_ADDR:
+      ENABLED:
+      SCANRATE:
+      QUEUE:
+      BLOCK:
+      # at least the length of ATTRIBUTES_FILE as inline XML or a resolved
+      # path, plus its NUL
+      XMLSIZE: "{{ [XMLSIZE, ((ATTRIBUTES_FILE.split() | join(' ')) if '<Attributes>' in ATTRIBUTES_FILE else (ATTRIBUTES_FILE | trim) if (ATTRIBUTES_FILE | trim).startswith('/') or not (ATTRIBUTES_FILE | trim) else '/epics/ioc/config/' ~ (ATTRIBUTES_FILE | trim)).encode('utf-8') | length + 1] | max }}"
+
+
+module: ADCore
+
+entity_models:
+  - name: NDFileNexus
+    description: |-
+      This plugin can compress NDArrays to Nexus and write them to file
+    parameters:
+      <<: *NDArrayBase-model-parameters
+
     pre_init:
       - value: |
           # NDFileNexusConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr)
           NDFileNexusConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDFileNexus.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDFileNexus.pvi.device.yaml
@@ -109,94 +177,7 @@ entity_models:
     description: |-
       This plugin is used to calculate the FFT of a time series
     parameters:
-      P:
-        type: str
-        description: |-
-          Device prefix
-
-      R:
-        type: str
-        description: |-
-          Device suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDFFT plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      NCHANS:
-        type: str
-        description: |-
-          Length of time series waveform
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Asyn port timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      TIME_LINK:
-        type: str
-        description: |-
-          Time in seconds between points (Can point to a record - use CP)
-        default: "0.1"
-
-      NAME:
-        type: str
-        description: |-
-          Label for signal
-        default: "0"
-
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+      <<: *NDArrayBase-model-parameters
 
       PRIORITY:
         type: int
@@ -216,6 +197,23 @@ entity_models:
           Maximum number threads
         default: 1
 
+      NCHANS:
+        type: str
+        description: |-
+          Length of time series waveform
+
+      TIME_LINK:
+        type: str
+        description: |-
+          Time in seconds between points (Can point to a record - use CP)
+        default: "0.1"
+
+      NAME:
+        type: str
+        description: |-
+          Label for signal
+        default: "0"
+
     pre_init:
       - when: first
         value: |
@@ -224,21 +222,16 @@ entity_models:
       - value: |
           NDFFTConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, 0, 0, {{PRIORITY}}, {{STACKSIZE}}, {{MAX_THREADS}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDFFT.template
         args:
-          NDARRAY_PORT:
+          <<: *NDArrayBase-template-args
           NAME:
           TIME_LINK:
-          NDARRAY_ADDR:
           NCHANS:
-          ENABLED:
-          PORT:
-          P:
-          R:
-          TIMEOUT:
-          SCANRATE:
-          ADDR:
 
     pvi:
       yaml_path: NDFFT.pvi.device.yaml
@@ -252,77 +245,7 @@ entity_models:
     description: |-
       This plugin attaches position information to NDArrays
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDPosPlugin plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Asyn timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+      <<: *NDArrayBase-model-parameters
 
       PRIORITY:
         type: int
@@ -341,18 +264,13 @@ entity_models:
           # NDPosPluginConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr, maxBuffers, maxMemory, priority, stackSize)
           NDPosPluginConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, 0, 0, {{PRIORITY}}, {{STACKSIZE}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDPosPlugin.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
   # _NDOverlayN subentity of NDOverlay #########################################
 
@@ -471,20 +389,13 @@ entity_models:
         P:
         R:
       pv: true
+      pv_prefix: $(P)$(R)
 
   - name: NDOverlay
     description: |-
       This plugin writes overlays on the ND array, ie. cursors and boxes
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
+      <<: [*NDArrayBase-model-parameters, *NDArrayBase-threads]
 
       NOverlays:
         type: int
@@ -492,90 +403,15 @@ entity_models:
           Number of overlays to create
         default: 8
 
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDOverlay plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
-      MAX_THREADS:
-        type: int
-        description: |-
-          Maximum number threads
-        default: 1
-
     pre_init:
       - value: |
           # NDOverlayConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr, NOverlays, maxBuffers, maxMemory, priority, stackSize, maxThreads)
           NDOverlayConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, {{NOverlays}}, 0, 0, 0, 0, {{MAX_THREADS}})
+
     databases:
       - file: $(ADCORE)/db/NDOverlay.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDOverlay.pvi.device.yaml
@@ -599,106 +435,26 @@ entity_models:
           ADDR: "{{ idx | int }}"
           TIMEOUT: "{{ TIMEOUT }}"
           SHAPE: 1
+      - *NDAttributes-config
 
   - name: NDColorConvert
     description: |-
       This plugin converts arrays from one colour type to another, e.g. Bayer -> RGB1
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDColorConvert plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
-      MAX_THREADS:
-        type: int
-        description: |-
-          Maximum number threads
-        default: 1
+      <<: [*NDArrayBase-model-parameters, *NDArrayBase-threads]
 
     pre_init:
       - value: |
           # NDColorConvertConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr, maxBuffers, maxMemory, priority, stackSize, maxThreads)
           NDColorConvertConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, 0, 0, 0, 0, {{MAX_THREADS}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDColorConvert.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDColorConvert.pvi.device.yaml
@@ -712,102 +468,29 @@ entity_models:
     description: |-
       This plugin can compress NDArrays to HDF5 and write them to file
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
+      <<: *NDArrayBase-model-parameters
 
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDFileHDF5 plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Asyn Port timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
       XMLSIZE:
         type: int
         description: |-
-          Number of elements of the XML layout waveform record
+          Number of bytes in the XMLFileName (HDF5 layout) and NDAttributesFile
+          waveform records. Grown automatically to fit ATTRIBUTES_FILE (the
+          inline XML or the resolved path, in UTF-8, plus a NUL); a larger
+          value given here wins.
         default: 2048
-
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
 
     pre_init:
       - value: |
           # NDFileHDF5Configure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr)
           NDFileHDF5Configure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDFileHDF5.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          XMLSIZE:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDFileHDF5.pvi.device.yaml
@@ -821,120 +504,27 @@ entity_models:
     description: |-
       Null file plugin for deleting driver files
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDFileHDF5 plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+      <<: *NDArrayBase-model-parameters
 
     pre_init:
       - value: |
           # NDFileNullConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr)
           NDFileNullConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDFileNull.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
   - name: NDStdArrays
     description: |-
       This plugin provides a waveform record that can display the NDArrays
           produced by its NDARRAY_PORT
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDStdArrays plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
+      <<: [*NDArrayBase-model-parameters, *NDArrayBase-threads]
 
       TYPE:
         type: str
@@ -956,68 +546,11 @@ entity_models:
           LONG:
           FLOAT:
           CHAR:
+
       NELEMENTS:
         type: int
         description: |-
           Number of elements
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
-      MAX_THREADS:
-        type: int
-        description: |-
-          Maximum number threads
-        default: 1
 
     pre_init:
       - when: first
@@ -1027,21 +560,16 @@ entity_models:
       - value: |
           NDStdArraysConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, 0, 0, 0, 0, {{MAX_THREADS}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDStdArrays.template
         args:
-          NDARRAY_PORT:
+          <<: *NDArrayBase-template-args
           FTVL:
-          ADDR:
-          SCANRATE:
           NELEMENTS:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
           TYPE:
-          PORT:
 
     pvi:
       yaml_path: NDStdArrays.pvi.device.yaml
@@ -1055,15 +583,7 @@ entity_models:
     description: |-
       TODO:ADD DESCRIPTION
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
+      <<: *NDArrayBase-model-parameters
 
       PORT:
         type: str
@@ -1075,46 +595,6 @@ entity_models:
         description: |-
           Input Array Port
 
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input Array Address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
       PRECOUNT:
         type: int
         description: |-
@@ -1127,115 +607,35 @@ entity_models:
           Post-trigger frame count
         default: 100
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDCircularBuff.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
+          <<: *NDArrayBase-template-args
           PRECOUNT:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
           POSTCOUNT:
-          R:
-          TIMEOUT:
-          PORT:
 
   - name: NDFileMagick
     description: |-
       This plugin can compress NDArrays to a range of formats supported by
           graphics magick and write them to file
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDFileMagick plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+      <<: *NDArrayBase-model-parameters
 
     pre_init:
       - value: |
           # NDFileMagickConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr)
           NDFileMagickConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDFileMagick.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDFileMagick.pvi.device.yaml
@@ -1249,71 +649,19 @@ entity_models:
     description: |-
       This plugin provides a pre and post external trigger frame capture buffer
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
+      <<: *NDArrayBase-model-parameters
 
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the FFT_calc plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
+      PRECOUNT:
         type: int
         description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
+          Pre-trigger frame count
+        default: 100
 
       ENABLED:
         type: int
         description: |-
           Plugin Enabled at startup?
         default: 1
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      PRECOUNT:
-        type: int
-        description: |-
-          Pre-trigger frame count
-        default: 100
 
       POSTCOUNT:
         type: int
@@ -1326,12 +674,6 @@ entity_models:
         description: |-
           Input array queue size
         default: 50
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
 
       MAX_BUFFERS:
         type: int
@@ -1350,20 +692,15 @@ entity_models:
           # NDCircularBuffConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr, maxBuffers, maxMemory)
           NDCircularBuffConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, {{MAX_BUFFERS}}, {{MAX_MEMORY}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDCircularBuff.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
+          <<: *NDArrayBase-template-args
           PRECOUNT:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
           POSTCOUNT:
-          R:
-          TIMEOUT:
-          PORT:
 
     pvi:
       yaml_path: NDCircularBuff.pvi.device.yaml
@@ -1377,66 +714,8 @@ entity_models:
     description: |-
       TODO:ADD DESCRIPTION
     parameters:
-      P:
-        type: str
-        description: |-
-          Device prefix
+      <<: *NDArrayBase-model-parameters
 
-      R:
-        type: str
-        description: |-
-          Device suffix
-
-      PORT:
-        type: id
-        description: |-
-          Asyn port name
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Asyn port of the callback source
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Asyn address of the callback source
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
       QUEUE:
         type: int
         description: |-
@@ -1448,12 +727,6 @@ entity_models:
         description: |-
           Number of NDArrays to store in cache
         default: 10000
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
 
       ATTR_IND:
         type: str
@@ -1478,7 +751,12 @@ entity_models:
     pre_init:
       - value: |
           NDAttrPlotConfig("{{PORT}}", {{N_ATTRS}}, {{N_CACHE}},
+
+    sub_entities:
+      - *NDAttributes-config
+
     # TODO - MISSING ARGS: N_ATTRS
+
     databases:
       - file: $(ADCORE)/db/NDAttrPlotAttr.template
         args:
@@ -1489,15 +767,7 @@ entity_models:
 
       - file: $(ADCORE)/db/NDAttrPlot.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
       - file: $(ADCORE)/db/NDAttrPlotData.template
         args:
@@ -1513,101 +783,20 @@ entity_models:
     description: |-
       This plugin can compress or decompress NDArrays
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDCodec plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Asyn timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
-      MAX_THREADS:
-        type: int
-        description: |-
-          Maximum number threads
-        default: 1
+      <<: [*NDArrayBase-model-parameters, *NDArrayBase-threads]
 
     pre_init:
       - value: |
           # NDCodecConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr, maxBuffers, maxMemory, priority, stackSize, maxThreads)
           NDCodecConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, 0, 0, 0, 0, {{MAX_THREADS}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDCodec.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDCodec.pvi.device.yaml
@@ -1621,67 +810,12 @@ entity_models:
     description: |-
       This plugin is used to gather NDArrays from multiple upstream plugins and merge them into a single stream
     parameters:
+      <<: *NDArrayBase-model-parameters
+
       NDARRAY_PORT:
         type: str
         description: |-
           Input Array Port
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDGather plugin
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input Array Address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
 
       MAX_PORTS:
         type: int
@@ -1689,34 +823,19 @@ entity_models:
           Maximum number of ports that this plugin can connect to for callbacks
         default: 5
 
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
     pre_init:
       - value: |
           # NDGatherConfigure(portName, queueSize, blockingCallbacks, maxPorts)
           NDGatherConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{MAX_PORTS}}")
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDGather.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
+          <<: *NDArrayBase-template-args
           MAX_PORTS:
-          PORT:
 
     pvi:
       yaml_path: NDGather.pvi.device.yaml
@@ -1731,101 +850,20 @@ entity_models:
       This plugin selects a region of interest and optionally scales it to
           fit in a particular data type
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDROI plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
-      MAX_THREADS:
-        type: int
-        description: |-
-          Maximum number threads
-        default: 1
+      <<: [*NDArrayBase-model-parameters, *NDArrayBase-threads]
 
     pre_init:
       - value: |
           # NDROIConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr, maxBuffers, maxMemory, priority, stackSize, maxThreads)
           NDROIConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, 0, 0, 0, 0, {{MAX_THREADS}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDROI.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDROI.pvi.device.yaml
@@ -1839,77 +877,7 @@ entity_models:
     description: |-
       This plugin displays NDArray attributes
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDAttribute plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+      <<: *NDArrayBase-model-parameters
 
       MAX_ATTRIBUTES:
         type: int
@@ -1942,6 +910,9 @@ entity_models:
           NDTimeSeriesConfigure("{{PORT}}_TS", {{QUEUE}}, {{BLOCK}}, "{{PORT}}", 1, {{MAX_ATTRIBUTES}})
           # Load time series records
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDAttributeN.template
         args:
@@ -1955,15 +926,7 @@ entity_models:
 
       - file: $(ADCORE)/db/NDAttribute.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDAttribute.pvi.device.yaml
@@ -1977,30 +940,12 @@ entity_models:
     description: |-
       This plugin calculates statistics like X and Y profile, centroid, and plots a histogram of binned pixels
     parameters:
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDStats plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
+      <<: [*NDArrayBase-model-parameters, *NDArrayBase-threads]
 
       HIST_SIZE:
         type: int
         description: |-
           Maximum size of Pixel binning histogram (e.g. 256 for Int8)
-
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
 
       XSIZE:
         type: int
@@ -2012,53 +957,11 @@ entity_models:
         description: |-
           Maximum size of Y histograms (e.g. 768)
 
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
       NCHANS:
         type: int
         description: |-
           Maximum length of time series (initialises waveform NELM, fixed on IOC boot)
         default: 2048
-
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      MAX_THREADS:
-        type: int
-        description: |-
-          Maximum number threads
-        default: 1
 
       MAX_BUFFERS:
         type: int
@@ -2072,22 +975,6 @@ entity_models:
           Maximum memory size in bytes (0 = no limit)
         default: 0
 
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
       TS_PORT:
         type: str
         description: |-
@@ -2122,24 +1009,17 @@ entity_models:
           BLOCK: "{{BLOCK}}",
           NSIGNALS: 23,
         }
+      - *NDAttributes-config
 
     databases:
       - file: $(ADCORE)/db/NDStats.template
         args:
-          NDARRAY_PORT:
+          <<: *NDArrayBase-template-args
           XSIZE:
           NCHANS:
-          NDARRAY_ADDR:
           YSIZE:
-          ENABLED:
           HIST_SIZE:
-          PORT:
-          P:
-          R:
-          TIMEOUT:
           TS_PORT:
-          SCANRATE:
-          ADDR:
 
     pvi:
       yaml_path: NDStats.pvi.device.yaml
@@ -2153,71 +1033,13 @@ entity_models:
     description: |-
       This plugin creates time series arrays from callback data
     parameters:
-      P:
-        type: str
-        description: |-
-          Device prefix
-
-      R:
-        type: str
-        description: |-
-          Device suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDTimeSeries plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
+      <<: *NDArrayBase-model-parameters
 
       NCHANS:
         type: int
         description: |-
           Length of time series waveform
 
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
       TIME_LINK:
         type: str
         description: |-
@@ -2229,18 +1051,6 @@ entity_models:
         description: |-
           Maximum number of time series signals
         default: 1
-
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
 
       PRIORITY:
         type: int
@@ -2268,190 +1078,93 @@ entity_models:
       - value: |
           NDTimeSeriesConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, {{NSIGNALS}}, 0, 0, {{PRIORITY}}, {{STACKSIZE}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDTimeSeries.template
         args:
-          NDARRAY_PORT:
-          ADDR:
+          <<: *NDArrayBase-template-args
           TIME_LINK:
-          NDARRAY_ADDR:
           NCHANS:
-          ENABLED:
-          PORT:
-          P:
-          R:
-          TIMEOUT:
-          SCANRATE:
 
       - file: $(ADCORE)/db/NDTimeSeriesN.template
         args: { NAME, P, R, PORT, ADDR, TIMEOUT, NCHANS }
 
-  - name: NDAttributes
+  - name: NDAttributesConfig
     description: |-
-      Add an attribute to the NDAttributes file for a particular ADDriver or
-          NDPlugin, and associate it with the NDAttributes file
+      Sets NDAttributesMacros and NDAttributesFile on an areaDetector driver or
+      plugin after iocInit, so they win over autosave restore. Every ADCore
+      plugin and the areaDetector drivers create one of these from their own
+      ATTRIBUTES_FILE and ATTRIBUTES_MACROS, so it is rarely needed directly.
+      Used directly, it does not grow the NDAttributesFile record's XMLSIZE:
+      inline XML or a path longer than 255 bytes needs XMLSIZE set to fit by
+      the entity that loads the template holding the record.
+      Emits nothing when both are empty.
     parameters:
-      port:
-        type: object
-        description: |-
-          ADDriver or NDPlugin to attach xml file to
-
-      source:
+      P:
         type: str
         description: |-
-          The EPICS PV (if type=EPICS_PV) or attribute name (if type=PARAM)
+          Device Prefix of the driver or plugin
 
-      name:
-        type: id
-        description: |-
-          Object name. You do not need to specify this
-        default: "{{ port }}.{{ attrname }}"
-
-      attrname:
+      R:
         type: str
         description: |-
-          Name of the attribute. If you leave this blank it defaults to <source>
+          Device Suffix of the driver or plugin
 
-      type:
-        type: enum
-        description: |-
-          Where the data should be picked up from
-        default: EPICS_PV
-        values:
-          EPICS_PV:
-          PARAM:
-      dbrtype:
-        type: enum
-        description: |-
-          DBR type (only used if type=EPICS_PV)
-        default: DBR_NATIVE
-        values:
-          DBR_STRING:
-          DBR_INT:
-          DBR_NATIVE:
-          DBR_SHORT:
-          DBR_CHAR:
-          DBR_ENUM:
-          DBR_LONG:
-          DBR_FLOAT:
-      datatype:
-        type: enum
-        description: |-
-          Data type (only used if type=PARAM)
-        default: INT
-        values:
-          INT:
-          DOUBLE:
-          STRING:
-      description:
-        type: str
-        description: |-
-          Description of the attribute
+      <<: *NDAttributes-parameters
 
-      addr:
-        type: int
-        description: |-
-          Asyn address of the parameter (only used if type=PARAM)
-        default: 0
+    validate:
+      - assert: (ATTRIBUTES_MACROS.split() | join(' ')).encode('utf-8') | length <= 255
+        message: >-
+          ATTRIBUTES_MACROS for {{ P }}{{ R }} is longer than the 255 bytes
+          that NDAttributesMacros holds
+      - assert: "'<' not in ATTRIBUTES_FILE or '<Attributes>' in ATTRIBUTES_FILE"
+        message: >-
+          ATTRIBUTES_FILE for {{ P }}{{ R }} contains '<' but not '<Attributes>',
+          so it would be taken as a file name. Inline XML must contain the
+          <Attributes> tag written exactly so, without attributes such as xmlns
 
+    # iocsh expands $(...) macros everywhere except inside single quotes, so
+    # values go in single quotes, and each ' is written as '"'"' (close the
+    # quote, a double-quoted ', reopen). Macros come first: ADCore re-reads
+    # the XML on either write and expands the macros as it does.
     post_init:
       - value: |
-          dbpf %s%sNDAttributesFile, %s/%s.xml
+          {%- set sq = "'" ~ '"' ~ "'" ~ '"' ~ "'" %}
+          {%- set macros = ATTRIBUTES_MACROS.split() | join(' ') %}
+          {%- set file = ATTRIBUTES_FILE | trim %}
+          {%- if macros %}
+          dbpf "{{ P }}{{ R }}NDAttributesMacros", '{{ macros | replace("'", sq) }}'
+          {%- endif %}
+          {%- if file %}
+          {%- if '<Attributes>' in file %}
+          {%- set file = file.split() | join(' ') %}
+          {%- elif not file.startswith('/') %}
+          {%- set file = '/epics/ioc/config/' ~ file %}
+          {%- endif %}
+          dbpf "{{ P }}{{ R }}NDAttributesFile", '{{ file | replace("'", sq) }}'
+          {%- endif %}
 
   - name: NDProcess
     description: |-
       This plugin does image processing like flat field correction, background
           subtraction, and recursive filtering
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDProcess plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+      <<: *NDArrayBase-model-parameters
 
     pre_init:
       - value: |
           # NDProcessConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr)
           NDProcessConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDProcess.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDProcess.pvi.device.yaml
@@ -2465,77 +1178,10 @@ entity_models:
     description: |-
       This plugin can compress NDArrays to TIFF and write them to file
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
+      <<: *NDArrayBase-model-parameters
 
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDFileTIFF plugin
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+    sub_entities:
+      - *NDAttributes-config
 
     databases:
       - file: $(ADCORE)/db/NDFileTIFF.template
@@ -2549,6 +1195,7 @@ entity_models:
           R:
           PORT:
           TIMEOUT:
+          XMLSIZE: "{{ [XMLSIZE, ((ATTRIBUTES_FILE.split() | join(' ')) if '<Attributes>' in ATTRIBUTES_FILE else (ATTRIBUTES_FILE | trim) if (ATTRIBUTES_FILE | trim).startswith('/') or not (ATTRIBUTES_FILE | trim) else '/epics/ioc/config/' ~ (ATTRIBUTES_FILE | trim)).encode('utf-8') | length + 1] | max }}"
 
     pre_init:
       - value: |
@@ -2567,77 +1214,12 @@ entity_models:
     description: |-
       This plugin is used to gather NDArrays from multiple upstream plugins and merge them into a single stream
     parameters:
+      <<: *NDArrayBase-model-parameters
+
       NDARRAY_PORT:
         type: str
         description: |-
           Input Array Port
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDGather plugin
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input Array Address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
 
       N:
         type: str
@@ -2648,6 +1230,9 @@ entity_models:
         type: str
         description: |-
           Maximum number ports
+
+    sub_entities:
+      - *NDAttributes-config
 
     databases:
       - file: $(ADCORE)/db/NDGatherN.template
@@ -2663,16 +1248,8 @@ entity_models:
 
       - file: $(ADCORE)/db/NDGather.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
+          <<: *NDArrayBase-template-args
           MAX_PORTS:
-          PORT:
 
   - name: NDROIStatN
     description: |-
@@ -2725,83 +1302,21 @@ entity_models:
         P:
         R:
       pv: true
+      pv_prefix: $(P)$(R)
 
   - name: NDROIStat
     description: |-
       This plugin calculates statistics of ROIs
     parameters:
-      P:
-        type: str
-        description: |-
-          First part of base PV name
+      <<: [*NDArrayBase-model-parameters, *NDArrayBase-threads]
 
-      R:
-        type: str
-        description: |-
-          Second part of base PV name
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDROIStat plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
+      XMLSIZE:
         type: int
         description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          asyn address on port
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+          Number of bytes in the NDAttributesFile waveform record. Grown
+          automatically to fit ATTRIBUTES_FILE (the inline XML or the resolved
+          path, in UTF-8, plus a NUL); a larger value given here wins.
+        default: 1024
 
       MAX_ROIS:
         type: int
@@ -2814,18 +1329,6 @@ entity_models:
         description: |-
           Number of points in the arrays
         default: 4096
-
-      MAX_THREADS:
-        type: int
-        description: |-
-          Maximum number threads
-        default: 1
-
-      XMLSIZE:
-        type: int
-        description: |-
-          Number of elements of the ND attributes xml waveform record
-        default: 1024
 
     pre_init:
       - value: |
@@ -2843,21 +1346,13 @@ entity_models:
           ADDR: "{{ index }}"
           TIMEOUT: "{{ TIMEOUT }}"
           NCHANS: "{{ NCHANS }}"
+      - *NDAttributes-config
 
     databases:
       - file: $(ADCORE)/db/NDROIStat.template
         args:
-          NDARRAY_PORT:
-          ADDR:
+          <<: *NDArrayBase-template-args
           NCHANS:
-          NDARRAY_ADDR:
-          ENABLED:
-          PORT:
-          P:
-          R:
-          TIMEOUT:
-          SCANRATE:
-          XMLSIZE:
 
     pvi:
       yaml_path: NDROIStat.pvi.device.yaml
@@ -2865,181 +1360,37 @@ entity_models:
         P:
         R:
       pv: true
+      pv_prefix: $(P)$(R)
 
   - name: NDFileNetCDF
     description: |-
       This plugin can compress NDArrays to NetCDF and write them to file
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDFileNetCDF plugin
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+      <<: *NDArrayBase-model-parameters
 
     pre_init:
       - value: |
           # NDFileNetCDFConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr)
           NDFileNetCDFConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDFileNetCDF.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
   - name: NDPvxsPlugin
     description: |-
       This plugin makes NDArrays available through PVAccess via PVXS
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDPosPlugin plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
+      <<: *NDArrayBase-model-parameters
 
       PVNAME:
         type: str
         description: |-
           Name of the PV to post NDArray out on
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Asyn timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
 
       PRIORITY:
         type: int
@@ -3058,18 +1409,13 @@ entity_models:
           # NDPvxsConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr, pvName, maxBuffers, maxMemory, priority, stackSize)
           NDPvxsConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, {{PVNAME}}, 0, 0, {{PRIORITY}}, {{STACKSIZE}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDPva.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDPvxs.pvi.device.yaml
@@ -3083,101 +1429,20 @@ entity_models:
     description: |-
       This plugin selects a region of interest and optionally scales it to fit in a particular data type
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDTransform plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
-      MAX_THREADS:
-        type: int
-        description: |-
-          Maximum number threads
-        default: 1
+      <<: [*NDArrayBase-model-parameters, *NDArrayBase-threads]
 
     pre_init:
       - value: |
           # NDTransformConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr, maxBuffers, maxMemory, priority, stackSize, maxThreads)
           NDTransformConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}}, 0, 0, 0, 0, {{MAX_THREADS}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDTransform.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDTransform.pvi.device.yaml
@@ -3191,95 +1456,20 @@ entity_models:
     description: |-
       This plugin can compress NDArrays to JPEG and write them to file
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
-
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDFileJPEG plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
+      <<: *NDArrayBase-model-parameters
 
     pre_init:
       - value: |
           # NDFileJPEGConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr)
           NDFileJPEGConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}})
 
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDFileJPEG.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDFileJPEG.pvi.device.yaml
@@ -3293,100 +1483,26 @@ entity_models:
     description: |-
       This plugin is used to distribute processing of NDArrays to multiple downstream plugins
     parameters:
-      P:
-        type: str
-        description: |-
-          Device Prefix
+      <<: *NDArrayBase-model-parameters
 
-      R:
-        type: str
-        description: |-
-          Device Suffix
-
-      PORT:
-        type: id
-        description: |-
-          Port name for the NDTimeSeries plugin
-
-      NDARRAY_PORT:
-        type: object
-        description: |-
-          Input array port
-
-      TIMEOUT:
-        type: int
-        description: |-
-          Timeout
-        default: 1
-
-      ADDR:
-        type: int
-        description: |-
-          Asyn Port address
-        default: 0
-
-      NDARRAY_ADDR:
-        type: int
-        description: |-
-          Input array port address
-        default: 0
-
-      ENABLED:
-        type: int
-        description: |-
-          Plugin Enabled at startup?
-        default: 0
-
-      SCANRATE:
-        type: enum
-        description: |-
-          Specified scan rate for cpu intensive PVs
-        default: I/O Intr
-        values:
-          .1 second:
-          1 second:
-          10 second:
-          5 second:
-          Passive:
-          2 second:
-          .2 second:
-          .5 second:
-          Event:
-          I/O Intr:
       NAME:
         type: int
         description: |-
           Label for signal
         default: 0
 
-      QUEUE:
-        type: int
-        description: |-
-          Input array queue size
-        default: 2
-
-      BLOCK:
-        type: int
-        description: |-
-          Blocking callbacks?
-        default: 0
-
     pre_init:
       - value: |
           # NDScatterConfigure(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr)
           NDScatterConfigure("{{PORT}}", {{QUEUE}}, {{BLOCK}}, "{{NDARRAY_PORT}}", {{NDARRAY_ADDR}})
+
+    sub_entities:
+      - *NDAttributes-config
+
     databases:
       - file: $(ADCORE)/db/NDScatter.template
         args:
-          NDARRAY_PORT:
-          ADDR:
-          SCANRATE:
-          NDARRAY_ADDR:
-          ENABLED:
-          P:
-          R:
-          TIMEOUT:
-          PORT:
+          <<: *NDArrayBase-template-args
 
     pvi:
       yaml_path: NDScatter.pvi.device.yaml

@@ -1,6 +1,37 @@
 - name: Clone block
   tags: [clone]
   block:
+    # force_clone (-e force_clone=true) clones again at the version in
+    # install.yml. Without it an existing folder is kept as it is, so a
+    # version change in install.yml does not reach the source that gets built.
+    - name: Force clone of {{ module }}
+      when: force_clone | bool
+      block:
+        # Trailing slashes are stripped here and in the removal below: with
+        # one, a symlink is resolved to the folder it points at, so it would
+        # not be seen as a link and its target would be emptied.
+        - name: Check what is at {{ local_path }}
+          ansible.builtin.stat:
+            path: "{{ local_path | regex_replace('/+$', '') }}"
+            follow: false
+          register: support_clone_target
+
+        # A link here points at a clone that someone is working in. Cloning
+        # over it would discard their work or leave the link pointing at
+        # nothing, so stop before anything is removed.
+        - name: Refuse to force clone over a symlink for {{ module }}
+          ansible.builtin.fail:
+            msg: >-
+              {{ local_path }} is a symlink, so force_clone will not remove
+              it. Run without force_clone to build the folder it points to,
+              or remove the link yourself to clone {{ module }} again.
+          when: support_clone_target.stat.exists and support_clone_target.stat.islnk
+
+        - name: Remove {{ local_path }}
+          ansible.builtin.file:
+            path: "{{ local_path | regex_replace('/+$', '') }}"
+            state: absent
+
     - name: Check if the repo has already been cloned
       ansible.builtin.stat:
         path: "{{ local_path }}"
@@ -12,7 +43,7 @@
         dest: "{{ local_path }}"
         version: "{{ version }}"
         recursive: "{{ recursive | default(false) | bool }}"
-        depth: "{{ 0 if patch_file.when | default(false) | bool else 1 }}"
+        depth: "{{ 0 if patch_file.when | default(false, true) | bool else 1 }}"
       when:
         - not stat_result.stat.exists
 
@@ -24,7 +55,7 @@
         version: "{{ patch_file.commit }}"
         force: true
       when:
-        - patch_file.when | default(false) | bool
+        - patch_file.when | default(false, true) | bool
         - patch_file.commit is defined
         - not stat_result.stat.exists
 
@@ -33,5 +64,5 @@
         git apply "{{ ibek_support_folder }}/{{ patch_file.path }}"
       args:
         chdir: "{{ local_path }}"
-      when: patch_file.when | default(false) and not stat_result.stat.exists | bool
+      when: (patch_file.when | default(false, true) | bool) and not stat_result.stat.exists
       changed_when: true
