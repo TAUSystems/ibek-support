@@ -43,6 +43,14 @@ entity_models:
           CHAN:
           HOST:
 
+    pvi:
+      yaml_path: MoxaChannel.pvi.device.yaml
+      ui_macros:
+        CHAN:
+        P:
+        R:
+      pv_prefix: "$(P)$(R):$(CHAN):"
+
   - name: Moxa16
     description: |-
       Root object for Moxa terminal server
@@ -68,6 +76,12 @@ entity_models:
         type: int
         description: |-
           Number of channels
+
+    pre_init:
+      - when: first
+        value: |
+          # devSnmp default of 60 OIDs per GET is too many for terminal servers
+          snmpMaxVarsPerMsg(30)
 
     sub_entities:
       # one channel per NCHANS; see the module's NCHANS parameter
@@ -97,6 +111,13 @@ entity_models:
           R:
           HOST:
 
+    pvi:
+      yaml_path: TerminalServer16.pvi.device.yaml
+      ui_macros:
+        P:
+        R:
+      pv_prefix: "$(P)$(R):"
+
   - name: Moxa32
     description: |-
       Root object for Moxa terminal server with 32 channels
@@ -122,6 +143,12 @@ entity_models:
         type: int
         description: |-
           Number of channels
+
+    pre_init:
+      - when: first
+        value: |
+          # devSnmp default of 60 OIDs per GET is too many for terminal servers
+          snmpMaxVarsPerMsg(30)
 
     sub_entities:
       # one channel per NCHANS; see the module's NCHANS parameter
@@ -150,6 +177,13 @@ entity_models:
           P:
           R:
           HOST:
+
+    pvi:
+      yaml_path: TerminalServer32.pvi.device.yaml
+      ui_macros:
+        P:
+        R:
+      pv_prefix: "$(P)$(R):"
 
   - name: AcsChannel
     description: |-
@@ -185,6 +219,14 @@ entity_models:
           CHAN:
           HOST:
 
+    pvi:
+      yaml_path: AcsChannel.pvi.device.yaml
+      ui_macros:
+        CHAN:
+        P:
+        R:
+      pv_prefix: "$(P)$(R):$(CHAN):"
+
   - name: Acs16
     description: |-
       Acs terminal server with 16 channels
@@ -210,6 +252,12 @@ entity_models:
         type: int
         description: |-
           Number of channels
+
+    pre_init:
+      - when: first
+        value: |
+          # devSnmp default of 60 OIDs per GET is too many for terminal servers
+          snmpMaxVarsPerMsg(30)
 
     sub_entities:
       # one channel per NCHANS; see the module's NCHANS parameter
@@ -239,6 +287,13 @@ entity_models:
           R:
           HOST:
 
+    pvi:
+      yaml_path: TerminalServerAcs16.pvi.device.yaml
+      ui_macros:
+        P:
+        R:
+      pv_prefix: "$(P)$(R):"
+
   - name: Acs32
     description: |-
       Acs terminal server with 32 channels
@@ -264,6 +319,12 @@ entity_models:
         type: int
         description: |-
           Number of channels
+
+    pre_init:
+      - when: first
+        value: |
+          # devSnmp default of 60 OIDs per GET is too many for terminal servers
+          snmpMaxVarsPerMsg(30)
 
     sub_entities:
       # one channel per NCHANS; see the module's NCHANS parameter
@@ -292,3 +353,10 @@ entity_models:
           P:
           R:
           HOST:
+
+    pvi:
+      yaml_path: TerminalServerAcs32.pvi.device.yaml
+      ui_macros:
+        P:
+        R:
+      pv_prefix: "$(P)$(R):"
