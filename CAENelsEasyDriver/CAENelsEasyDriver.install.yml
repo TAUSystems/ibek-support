@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../_scripts/support_install_variables.json
 
 module: easy-driver-epics
-version: 9bf8716
+version: d13c2b3
 organization: https://github.com/TAUSystems
 
 dbds:
